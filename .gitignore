@@ -1,0 +1,5 @@
+/__pycache__/*
+/voronoi_lib/__pycache__/*
+/.vscode/*
+*.png
+TODO.txt
