@@ -6,26 +6,9 @@ from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
 from collections import defaultdict
+from voronoi_lib.utils import extract_cells
 
 
-def extract_cells(edges):
-    cell_vertices = defaultdict(set)
-    for edge in edges:
-        if edge.start is not None:
-            cell_vertices[edge.left].add(edge.start)
-            cell_vertices[edge.right].add(edge.start)
-        if edge.end is not None:
-            cell_vertices[edge.left].add(edge.end)
-            cell_vertices[edge.right].add(edge.end)
-
-    cells = {}
-    for site, vertices in cell_vertices.items():
-        sorted_vertices = sorted(
-            list(vertices),
-            key=lambda v: math.atan2(v.y - site.y, v.x - site.x)
-        )
-        cells[site] = sorted_vertices
-    return cells
 
 
 class VoronoiGUI:
@@ -90,7 +73,7 @@ class VoronoiGUI:
         self._setup_axes()
         self.fig.canvas.draw()
 
-    def on_compute_click(self, event):
+    def on_compute_click(self, event):  
         if self.computed or len(self.points) < 2:
             print("Insert at least 2 points")
             return
@@ -98,29 +81,26 @@ class VoronoiGUI:
         self.computed = True
         self.fig.canvas.draw()
 
-        # --- THE DUMMY SITES TRICK ---
-        # Add 4 very far away points, slightly offset by decimals
-        # (to circumvent division by zero in parabola_x in degenerate cases).
-        # This forces all cells on screen to close perfectly.
-        dummy_sites = [
-            Point(-1000, -1000.1),
-            Point(1000, -1000.2),
-            Point(1000, 1000.1),
-            Point(-1000, 1000.2)
+        # 1. Definiamo il "Bounding Box dell'Universo"
+        # È topologicamente sufficientemente grande da contenere tutti i veri vertici di Voronoi
+        # e serve per chiudere le semirette aperte.
+        universe_box = [
+            Point(-10000, -10000),
+            Point(10000, -10000),
+            Point(10000, 10000),
+            Point(-10000, 10000)
         ]
-        all_points = self.points + dummy_sites
 
-        # Compute with additional points
-        v = FortuneVoronoi(all_points)
+        # 2. Computazione puramente basata sui dati REALI
+        v = FortuneVoronoi(self.points)
         edges = v.compute()
-        cells = extract_cells(edges)
+        
+        # 3. Estrazione dei vertici e chiusura dei raggi verso l'infinito
+        cells = extract_cells(edges, universe_box)
 
-        # Remove dummy site cells to avoid drawing them
-        for dummy in dummy_sites:
-            if dummy in cells:
-                del cells[dummy]
-
-        # Clipping and geometric rendering (unchanged)
+        # 4. Clipping geometrico esatto per lo schermo 
+        # (Sutherland-Hodgman taglierà i macro-poligoni creando automaticamente 
+        # i vertici sugli angoli dello schermo dove necessario)
         for i, (site, vertices) in enumerate(cells.items()):
             clipped_vertices = clip_polygon(vertices, self.box)
             if not clipped_vertices:
@@ -134,7 +114,6 @@ class VoronoiGUI:
 
         self.ax.set_title(f"Voronoi Diagram", fontsize=14, fontweight='bold')
         self.fig.canvas.draw()
-
 def main():
     gui = VoronoiGUI()
     plt.show()

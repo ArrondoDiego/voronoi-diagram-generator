@@ -5,29 +5,9 @@ from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
 from voronoi_lib.visualization import save_image
+from voronoi_lib.utils import extract_cells
 
 DEBUG = True
-
-def extract_cells(edges):
-    cell_vertices = defaultdict(set)
-
-    for edge in edges:
-        if edge.start is not None:
-            cell_vertices[edge.left].add(edge.start)
-            cell_vertices[edge.right].add(edge.start)
-        if edge.end is not None:
-            cell_vertices[edge.left].add(edge.end)
-            cell_vertices[edge.right].add(edge.end)
-
-    cells = {}
-    for site, vertices in cell_vertices.items():
-        sorted_vertices = sorted(
-            list(vertices),
-            key=lambda v: math.atan2(v.y - site.y, v.x - site.x)
-        )
-        cells[site] = sorted_vertices
-
-    return cells
 
 def main():
     choice = input("Use [r]andom or [c]ustom points?: ").strip().lower()
@@ -52,32 +32,25 @@ def main():
         for i, p in enumerate(points, 1):
             print(f"  Point {i}: ({p.x}, {p.y})")
 
+    # 1. Definizione dei due domini
+    universe_box = [Point(-10000, -10000), Point(10000, -10000), Point(10000, 10000), Point(-10000, 10000)]
+    display_box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
+    
+    # 2. Computazione
     v = FortuneVoronoi(points)
     edges = v.compute()
-    print(f"\n{len(edges)} edges, {len(v.vertices)} vertices")
-    cells = extract_cells(edges)
-    if DEBUG: 
-        print("\n--- VORONOI CELLS ---\n")
-        for i, (site, vertices) in enumerate(cells.items(), 1):
-            print(f"Cell for Site {site}:")
-            for vert in vertices:
-                print(f"- Vertex ({vert.x:.2f}, {vert.y:.2f})")
     
-    # sizes of canvas to save the image
-    box = [
-        Point(0, 0),
-        Point(100, 0),
-        Point(100, 100),
-        Point(0, 100)
-    ]
+    # 3. Estrazione chiusa all'infinito
+    cells = extract_cells(edges, universe_box)
     
+    # 4. Clipping geometrico esatto per lo schermo
     clipped_cells = {}
     for site, vertices in cells.items():
-        clipped_vertices = clip_polygon(vertices, box)
+        clipped_vertices = clip_polygon(vertices, display_box)
         if clipped_vertices:
             clipped_cells[site] = clipped_vertices
 
-    save_image(points, clipped_cells, box, "voronoi_output.png")
+    save_image(points, clipped_cells, display_box, "voronoi_output.png")
 
 if __name__ == "__main__":
     main()

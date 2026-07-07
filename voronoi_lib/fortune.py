@@ -232,25 +232,42 @@ class FortuneVoronoi:
         event = CircleEvent(event_point, mid, center, radius)
         mid.event = event
         self._queue.push(event)
-        
+
     def _finish_edges(self):
         for edge in self.edges:
+            # Se lo spigolo è già un segmento chiuso, non facciamo nulla
             if edge.start is not None and edge.end is not None:
-                continue # Lo spigolo è già un segmento chiuso
+                continue
 
-            # Vettore tra i due siti
+            # Vettore che unisce i due siti confinanti
             dx = edge.right.x - edge.left.x
             dy = edge.right.y - edge.left.y
             
-            # Vettore ortogonale (direzione del bordo di Voronoi)
-            # Dobbiamo assicurarci che punti verso l'esterno (verso il basso/l'infinito)
+            # La direzione del bordo di Voronoi è ortogonale al segmento tra i siti
             nx = -dy
             ny = dx
-
-            # Normalizziamo il vettore direzione (opzionale ma consigliato per consistenza)
+            
+            # Normalizziamo il vettore direzione (buona pratica matematica)
             length = math.sqrt(nx * nx + ny * ny)
             if length > 0:
                 nx /= length
                 ny /= length
 
-            edge.direction = Point(nx, ny)
+            if edge.start is None and edge.end is None:
+                # Caso limite: diagramma con solo 2 siti (o siti collineari)
+                # Fissiamo un'origine arbitraria sul punto medio
+                mx = (edge.left.x + edge.right.x) / 2
+                my = (edge.left.y + edge.right.y) / 2
+                edge.start = Point(mx, my)
+                edge.direction = Point(nx, ny)
+                
+                # In questo caso specifico servirebbe generare un secondo edge simmetrico
+                # che punta in direzione opposta (-nx, -ny), ma per ora sistemiamo la struttura base.
+            elif edge.end is None:
+                # È un raggio che parte da start e va all'infinito
+                edge.direction = Point(nx, ny)
+            elif edge.start is None:
+                # È un raggio che converge in end, invertiamo la direzione
+                edge.start = edge.end
+                edge.end = None
+                edge.direction = Point(-nx, -ny)
