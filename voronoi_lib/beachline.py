@@ -8,17 +8,20 @@ class BeachNode:
         self.left = None
         self.right = None
         
+        # NUOVO: Proprietà per il bilanciamento AVL
+        self.height = 1  
+        
         # Attributi per le Foglie (Archi reali)
         self.site = site
-        self.event = None  # Puntatore al CircleEvent
-        self.prev = None   # Puntatore geometrico all'arco sinistro vicino
-        self.next = None   # Puntatore geometrico all'arco destro vicino
+        self.event = None  
+        self.prev = None   
+        self.next = None   
         
         # Attributi per i Nodi Interni (Breakpoint)
         self.left_site = None
         self.right_site = None
-        self.edge = None   # Il VoronoiEdge associato a questo breakpoint
-
+        self.edge = None
+        
     def __repr__(self):
         if self.is_leaf:
             return f"Leaf({self.site})"
@@ -96,3 +99,89 @@ class BeachLine:
         x1 = (-b - math.sqrt(disc)) / (2 * a)
         x2 = (-b + math.sqrt(disc)) / (2 * a)
         return (x1, x2) if x1 < x2 else (x2, x1)
+    def update_height(self, node):
+        if node:
+            hl = node.left.height if node.left else 0
+            hr = node.right.height if node.right else 0
+            node.height = 1 + max(hl, hr)
+
+    def balance_factor(self, node):
+        if not node: return 0
+        hl = node.left.height if node.left else 0
+        hr = node.right.height if node.right else 0
+        return hl - hr
+
+    def _rotate_left(self, z):
+        y = z.right
+        T2 = y.left
+
+        # Esegui la rotazione
+        y.left = z
+        z.right = T2
+
+        # Aggiorna i puntatori 'parent'
+        y.parent = z.parent
+        if z.parent is None:
+            self._root = y
+        elif z.parent.left == z:
+            z.parent.left = y
+        else:
+            z.parent.right = y
+            
+        z.parent = y
+        if T2:
+            T2.parent = z
+
+        # Aggiorna le altezze
+        self.update_height(z)
+        self.update_height(y)
+        return y
+
+    def _rotate_right(self, z):
+        y = z.left
+        T3 = y.right
+
+        # Esegui la rotazione
+        y.right = z
+        z.left = T3
+
+        # Aggiorna i puntatori 'parent'
+        y.parent = z.parent
+        if z.parent is None:
+            self._root = y
+        elif z.parent.left == z:
+            z.parent.left = y
+        else:
+            z.parent.right = y
+            
+        z.parent = y
+        if T3:
+            T3.parent = z
+
+        # Aggiorna le altezze
+        self.update_height(z)
+        self.update_height(y)
+        return y
+
+    def rebalance(self, node):
+        """Risale l'albero dal nodo dato fino alla radice, bilanciando dove necessario."""
+        while node is not None:
+            self.update_height(node)
+            bf = self.balance_factor(node)
+
+            # Caso Left Left
+            if bf > 1 and self.balance_factor(node.left) >= 0:
+                node = self._rotate_right(node)
+            # Caso Right Right
+            elif bf < -1 and self.balance_factor(node.right) <= 0:
+                node = self._rotate_left(node)
+            # Caso Left Right
+            elif bf > 1 and self.balance_factor(node.left) < 0:
+                node.left = self._rotate_left(node.left)
+                node = self._rotate_right(node)
+            # Caso Right Left
+            elif bf < -1 and self.balance_factor(node.right) > 0:
+                node.right = self._rotate_right(node.right)
+                node = self._rotate_left(node)
+
+            node = node.parent

@@ -6,7 +6,7 @@ from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
 from voronoi_lib.visualization import save_image
 
-DEBUG = False
+DEBUG = True
 
 def extract_cells(edges):
     cell_vertices = defaultdict(set)

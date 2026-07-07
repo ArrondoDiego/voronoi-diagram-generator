@@ -108,6 +108,9 @@ class FortuneVoronoi:
             else:
                 arc.parent.right = bp_left
 
+        # NUOVO: Ripristina le invarianti AVL
+        self._beach.rebalance(bp_left)
+
         # 5. Generazione dei segmenti geometrici
         edge1 = VoronoiEdge(start_point, arc.site, p)
         edge2 = VoronoiEdge(start_point, p, arc.site)
@@ -176,6 +179,9 @@ class FortuneVoronoi:
             else:
                 gp.right = sib
 
+        # NUOVO: Ripristina le invarianti AVL partendo dal nonno
+        self._beach.rebalance(gp)   
+
         # Crea il nuovo spigolo che parte dal vertice appena scoperto
         new_edge = VoronoiEdge(vertex, left_arc.site, right_arc.site)
         self.edges.append(new_edge)
@@ -193,7 +199,7 @@ class FortuneVoronoi:
             self._check_circle_event(left_arc.prev, left_arc, right_arc, event.point.y)
         if right_arc.next is not None:
             self._check_circle_event(left_arc, right_arc, right_arc.next, event.point.y)
-            
+
     def _check_circle_event(self, left, mid, right, sweep_y):
         if left is None or mid is None or right is None:
             return
@@ -226,30 +232,25 @@ class FortuneVoronoi:
         event = CircleEvent(event_point, mid, center, radius)
         mid.event = event
         self._queue.push(event)
-
+        
     def _finish_edges(self):
         for edge in self.edges:
+            if edge.start is not None and edge.end is not None:
+                continue # Lo spigolo è già un segmento chiuso
+
+            # Vettore tra i due siti
             dx = edge.right.x - edge.left.x
             dy = edge.right.y - edge.left.y
-            length = math.sqrt(dx * dx + dy * dy)
-            if length == 0:
-                continue
+            
+            # Vettore ortogonale (direzione del bordo di Voronoi)
+            # Dobbiamo assicurarci che punti verso l'esterno (verso il basso/l'infinito)
+            nx = -dy
+            ny = dx
 
-            nx = -dy / length
-            ny = dx / length
+            # Normalizziamo il vettore direzione (opzionale ma consigliato per consistenza)
+            length = math.sqrt(nx * nx + ny * ny)
+            if length > 0:
+                nx /= length
+                ny /= length
 
-            if edge.start is None and edge.end is None:
-                mx = (edge.left.x + edge.right.x) / 2
-                my = (edge.left.y + edge.right.y) / 2
-                edge.start = Point(mx + nx * 1000, my + ny * 1000)
-                edge.end = Point(mx - nx * 1000, my - ny * 1000)
-            elif edge.end is None:
-                edge.end = Point(
-                    edge.start.x - nx * 1000,
-                    edge.start.y - ny * 1000,
-                )
-            elif edge.start is None:
-                edge.start = Point(
-                    edge.end.x + nx * 1000,
-                    edge.end.y + ny * 1000,
-                )
+            edge.direction = Point(nx, ny)
