@@ -14,7 +14,7 @@ def main():
     points = []
 
     if choice == "c":
-        print("Enter 5 points (x y) between -100 and 100:")
+        print("Enter 5 points (x y) between 0 and 100:")
         for i in range(5):
             while True:
                 try:
@@ -41,7 +41,7 @@ def main():
     edges = v.compute()
     
     # 3. Estrazione chiusa all'infinito
-    cells = extract_cells(edges, universe_box, self.points)    
+    cells = extract_cells(edges, universe_box, points)    
     # 4. Clipping geometrico esatto per lo schermo
     clipped_cells = {}
     for site, vertices in cells.items():

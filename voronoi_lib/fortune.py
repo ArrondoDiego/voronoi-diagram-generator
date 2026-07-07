@@ -150,11 +150,18 @@ class FortuneVoronoi:
         # Cerca l'altro breakpoint nell'albero che collassa in questo medesimo vertice
         highest_changed_ancestor = None
         curr = p
-        while curr.parent is not None:
-            if curr.parent.left_site == arc.site or curr.parent.right_site == arc.site:
-                highest_changed_ancestor = curr.parent
-                break
-            curr = curr.parent
+        
+        # p è il genitore diretto della foglia 'arc'
+        if p.left == arc:
+            # p è il breakpoint destro dell'arco. Cerchiamo il predecessore in-order (breakpoint sinistro).
+            while curr.parent is not None and curr.parent.left == curr:
+                curr = curr.parent
+            highest_changed_ancestor = curr.parent
+        else:
+            # p è il breakpoint sinistro dell'arco. Cerchiamo il successore in-order (breakpoint destro).
+            while curr.parent is not None and curr.parent.right == curr:
+                curr = curr.parent
+            highest_changed_ancestor = curr.parent
 
         # Chiudi i vecchi spigoli nel vertice calcolato
         if p.edge is not None:
