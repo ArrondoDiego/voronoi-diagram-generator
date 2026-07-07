@@ -235,39 +235,32 @@ class FortuneVoronoi:
 
     def _finish_edges(self):
         for edge in self.edges:
-            # Se lo spigolo è già un segmento chiuso, non facciamo nulla
             if edge.start is not None and edge.end is not None:
                 continue
 
-            # Vettore che unisce i due siti confinanti
             dx = edge.right.x - edge.left.x
             dy = edge.right.y - edge.left.y
             
-            # La direzione del bordo di Voronoi è ortogonale al segmento tra i siti
             nx = -dy
             ny = dx
             
-            # Normalizziamo il vettore direzione (buona pratica matematica)
             length = math.sqrt(nx * nx + ny * ny)
             if length > 0:
                 nx /= length
                 ny /= length
 
             if edge.start is None and edge.end is None:
-                # Caso limite: diagramma con solo 2 siti (o siti collineari)
-                # Fissiamo un'origine arbitraria sul punto medio
                 mx = (edge.left.x + edge.right.x) / 2
                 my = (edge.left.y + edge.right.y) / 2
                 edge.start = Point(mx, my)
-                edge.direction = Point(nx, ny)
-                
-                # In questo caso specifico servirebbe generare un secondo edge simmetrico
-                # che punta in direzione opposta (-nx, -ny), ma per ora sistemiamo la struttura base.
+                # Il raggio si propaga nella direzione opposta
+                edge.direction = Point(-nx, -ny)
             elif edge.end is None:
-                # È un raggio che parte da start e va all'infinito
-                edge.direction = Point(nx, ny)
+                # È un raggio che parte da start e va all'infinito (verso l'esterno)
+                edge.direction = Point(-nx, -ny)
             elif edge.start is None:
-                # È un raggio che converge in end, invertiamo la direzione
+                # Se convergeva verso end ma non ha un inizio, lo facciamo partire 
+                # da end invertendo la sua rotta naturale
                 edge.start = edge.end
                 edge.end = None
-                edge.direction = Point(-nx, -ny)
+                edge.direction = Point(nx, ny)

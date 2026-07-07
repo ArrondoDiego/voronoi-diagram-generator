@@ -96,8 +96,7 @@ class VoronoiGUI:
         edges = v.compute()
         
         # 3. Estrazione dei vertici e chiusura dei raggi verso l'infinito
-        cells = extract_cells(edges, universe_box)
-
+        cells = extract_cells(edges, universe_box, self.points)
         # 4. Clipping geometrico esatto per lo schermo 
         # (Sutherland-Hodgman taglierà i macro-poligoni creando automaticamente 
         # i vertici sugli angoli dello schermo dove necessario)

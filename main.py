@@ -41,8 +41,7 @@ def main():
     edges = v.compute()
     
     # 3. Estrazione chiusa all'infinito
-    cells = extract_cells(edges, universe_box)
-    
+    cells = extract_cells(edges, universe_box, self.points)    
     # 4. Clipping geometrico esatto per lo schermo
     clipped_cells = {}
     for site, vertices in cells.items():

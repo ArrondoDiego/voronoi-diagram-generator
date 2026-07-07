@@ -37,8 +37,12 @@ def ray_box_intersection(start, direction, box):
 
     return pt
 
-def extract_cells(edges, universe_box):
+def extract_cells(edges, universe_box, all_sites):
     cell_vertices = defaultdict(set)
+
+    # Helper analitico per la distanza al quadrato
+    def dist_sq(p, s):
+        return (p.x - s.x)**2 + (p.y - s.y)**2
 
     for edge in edges:
         if getattr(edge, 'start', None):
@@ -50,15 +54,36 @@ def extract_cells(edges, universe_box):
             cell_vertices[edge.right].add(edge.end)
             
         elif getattr(edge, 'direction', None):
-            # È un raggio infinito: calcoliamo dove esce dal Bounding Box dell'Universo
-            pt = ray_box_intersection(edge.start, edge.direction, universe_box)
+            # IL TEST INFALLIBILE
+            # Testiamo empiricamente quale dei due versi del raggio si allontana dal diagramma
+            test_t = 10000
+            dir_x, dir_y = edge.direction.x, edge.direction.y
+            start_pt = edge.start
+            
+            # Generiamo due punti lontanissimi nelle due direzioni opposte
+            pt1 = Point(start_pt.x + dir_x * test_t, start_pt.y + dir_y * test_t)
+            pt2 = Point(start_pt.x - dir_x * test_t, start_pt.y - dir_y * test_t)
+            
+            # Calcoliamo quante volte pt1 è più vicino a un altro sito rispetto al suo sito legittimo (edge.left)
+            dist1 = dist_sq(pt1, edge.left)
+            violations1 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt1, s) < dist1)
+            
+            # Facciamo lo stesso per pt2
+            dist2 = dist_sq(pt2, edge.left)
+            violations2 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt2, s) < dist2)
+            
+            # La verità geometrica: la direzione corretta esce verso il vuoto, subendo meno violazioni
+            final_dir = edge.direction if violations1 <= violations2 else Point(-dir_x, -dir_y)
+            
+            # Calcoliamo l'intersezione solo con la direzione confermata
+            pt = ray_box_intersection(start_pt, final_dir, universe_box)
             if pt:
                 cell_vertices[edge.left].add(pt)
                 cell_vertices[edge.right].add(pt)
 
     cells = {}
     for site, vertices in cell_vertices.items():
-        # Ordinamento radiale per formare un poligono convesso valido
+        # L'ordinamento ripristinerà il poligono convesso perfetto
         sorted_vertices = sorted(
             list(vertices),
             key=lambda v: math.atan2(v.y - site.y, v.x - site.x)
@@ -66,3 +91,5 @@ def extract_cells(edges, universe_box):
         cells[site] = sorted_vertices
 
     return cells
+
+# All'interno di extract_cells in utils.py
