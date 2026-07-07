@@ -47,7 +47,7 @@ class FortuneVoronoi:
             self._beach.set_root(BeachNode(p, is_leaf=True))
             return
 
-        # Ricerca binaria sull'albero
+        # Binary search on the tree
         arc = self._beach.find_arc_above(p, p.y)
 
         if arc.event is not None:
@@ -57,12 +57,12 @@ class FortuneVoronoi:
         start_y = self._beach.parabola_x(arc.site, p.y, p.x)
         start_point = Point(p.x, start_y)
 
-        # 1. Crea le nuove foglie (archi)
+        # 1. Create the new leaves (arcs)
         left_leaf = BeachNode(arc.site, is_leaf=True)
         mid_leaf = BeachNode(p, is_leaf=True)
         right_leaf = BeachNode(arc.site, is_leaf=True)
 
-        # Mantieni i puntatori orizzontali solo sulle foglie per i cerchi in O(1)
+        # Keep horizontal pointers only on leaves for O(1) circle events
         left_leaf.prev = arc.prev
         if arc.prev:
             arc.prev.next = left_leaf
@@ -76,7 +76,7 @@ class FortuneVoronoi:
         if arc.next:
             arc.next.prev = right_leaf
 
-        # 2. Crea i nodi interni (i due nuovi breakpoint associati)
+        # 2. Create the internal nodes (the two new associated breakpoints)
         bp_left = BeachNode(is_leaf=False)
         bp_left.left_site = arc.site
         bp_left.right_site = p
@@ -85,7 +85,7 @@ class FortuneVoronoi:
         bp_right.left_site = p
         bp_right.right_site = arc.site
 
-        # 3. Assembla il sottoalbero locale
+        # 3. Assemble the local subtree
         bp_left.left = left_leaf
         left_leaf.parent = bp_left
 
@@ -98,7 +98,7 @@ class FortuneVoronoi:
         bp_right.right = right_leaf
         right_leaf.parent = bp_right
 
-        # 4. Sostituisci la vecchia foglia 'arc' con il nuovo sottoalbero nell'albero principale
+        # 4. Replace the old leaf 'arc' with the new subtree in the main tree
         bp_left.parent = arc.parent
         if arc.parent is None:
             self._beach.set_root(bp_left)
@@ -108,10 +108,10 @@ class FortuneVoronoi:
             else:
                 arc.parent.right = bp_left
 
-        # NUOVO: Ripristina le invarianti AVL
+        # NEW: Restore AVL invariants
         self._beach.rebalance(bp_left)
 
-        # 5. Generazione dei segmenti geometrici
+        # 5. Generate geometric segments
         edge1 = VoronoiEdge(start_point, arc.site, p)
         edge2 = VoronoiEdge(start_point, p, arc.site)
         self.edges.append(edge1)
@@ -120,7 +120,7 @@ class FortuneVoronoi:
         bp_left.edge = edge1
         bp_right.edge = edge2
 
-        # Verifica i potenziali Circle Event usando la catena di foglie orizzontali
+        # Check potential Circle Events using the horizontal leaf chain
         if left_leaf.prev is not None:
             self._check_circle_event(left_leaf.prev, left_leaf, mid_leaf, p.y)
 
@@ -147,33 +147,33 @@ class FortuneVoronoi:
 
         p = arc.parent
         
-        # Cerca l'altro breakpoint nell'albero che collassa in questo medesimo vertice
+        # Find the other breakpoint in the tree that collapses into this same vertex
         highest_changed_ancestor = None
         curr = p
         
-        # p è il genitore diretto della foglia 'arc'
+        # p is the direct parent of leaf 'arc'
         if p.left == arc:
-            # p è il breakpoint destro dell'arco. Cerchiamo il predecessore in-order (breakpoint sinistro).
+            # p is the arc's right breakpoint. Find the in-order predecessor (left breakpoint).
             while curr.parent is not None and curr.parent.left == curr:
                 curr = curr.parent
             highest_changed_ancestor = curr.parent
         else:
-            # p è il breakpoint sinistro dell'arco. Cerchiamo il successore in-order (breakpoint destro).
+            # p is the arc's left breakpoint. Find the in-order successor (right breakpoint).
             while curr.parent is not None and curr.parent.right == curr:
                 curr = curr.parent
             highest_changed_ancestor = curr.parent
 
-        # Chiudi i vecchi spigoli nel vertice calcolato
+        # Close old edges at the computed vertex
         if p.edge is not None:
             p.edge.end = vertex
         if highest_changed_ancestor and highest_changed_ancestor.edge is not None:
             highest_changed_ancestor.edge.end = vertex
 
-        # Sgancia la foglia dalla lista orizzontale
+        # Detach the leaf from the horizontal list
         left_arc.next = right_arc
         right_arc.prev = left_arc
 
-        # Rimuovi la foglia 'arc' dall'albero binario: il fratello prende il posto del padre
+        # Remove leaf 'arc' from the binary tree: sibling takes parent's place
         gp = p.parent
         sib = p.right if p.left == arc else p.left
         sib.parent = gp
@@ -186,14 +186,14 @@ class FortuneVoronoi:
             else:
                 gp.right = sib
 
-        # NUOVO: Ripristina le invarianti AVL partendo dal nonno
+        # NEW: Restore AVL invariants starting from grandparent
         self._beach.rebalance(gp)   
 
-        # Crea il nuovo spigolo che parte dal vertice appena scoperto
+        # Create the new edge starting from the newly discovered vertex
         new_edge = VoronoiEdge(vertex, left_arc.site, right_arc.site)
         self.edges.append(new_edge)
 
-        # Aggiorna il breakpoint superstite con la nuova coppia di siti confinanti
+        # Update the surviving breakpoint with the new adjacent site pair
         if highest_changed_ancestor:
             if highest_changed_ancestor.left_site == arc.site:
                 highest_changed_ancestor.left_site = left_arc.site
@@ -201,7 +201,7 @@ class FortuneVoronoi:
                 highest_changed_ancestor.right_site = right_arc.site
             highest_changed_ancestor.edge = new_edge
 
-        # Controlla le nuove triplette adiacenti per i prossimi circle event
+        # Check new adjacent triplets for future circle events
         if left_arc.prev is not None:
             self._check_circle_event(left_arc.prev, left_arc, right_arc, event.point.y)
         if right_arc.next is not None:
@@ -260,14 +260,14 @@ class FortuneVoronoi:
                 mx = (edge.left.x + edge.right.x) / 2
                 my = (edge.left.y + edge.right.y) / 2
                 edge.start = Point(mx, my)
-                # Il raggio si propaga nella direzione opposta
+                # The ray propagates in the opposite direction
                 edge.direction = Point(-nx, -ny)
             elif edge.end is None:
-                # È un raggio che parte da start e va all'infinito (verso l'esterno)
+                # It's a ray starting from start going to infinity (outward)
                 edge.direction = Point(-nx, -ny)
             elif edge.start is None:
-                # Se convergeva verso end ma non ha un inizio, lo facciamo partire 
-                # da end invertendo la sua rotta naturale
+                # If it converged toward end but has no start, make it start 
+                # from end by inverting its natural direction
                 edge.start = edge.end
                 edge.end = None
                 edge.direction = Point(nx, ny)

@@ -6,7 +6,7 @@ class VoronoiEdge:
         self.end = None
         self.left = left
         self.right = right
-        self.direction = None  # Nuovo: Vettore direzionale (dx, dy) per le semirette
+        self.direction = None  # NEW: Directional vector (dx, dy) for rays
         self.finished = False
 
     def __repr__(self):

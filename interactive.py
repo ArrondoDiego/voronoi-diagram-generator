@@ -81,20 +81,20 @@ class VoronoiGUI:
         self.computed = True
         self.fig.canvas.draw()
 
-        # Definiamo il dominio infinito
+        # Define the infinite domain
         universe_box = [
             Point(-10000, -10000), Point(10000, -10000), 
             Point(10000, 10000), Point(-10000, 10000)
         ]
 
-        # Esecuzione matematica senza dati fittizi
+        # Mathematical execution without dummy data
         v = FortuneVoronoi(self.points)
         edges = v.compute()
         
-        # Estrazione passando i siti reali per l'autoverifica vettoriale
+        # Extraction passing real sites for vectorial self-verification
         cells = extract_cells(edges, universe_box, self.points)
 
-        # Rendering e Clipping per lo schermo (0-100)
+        # Rendering and Clipping for the screen (0-100)
         for i, (site, vertices) in enumerate(cells.items()):
             clipped_vertices = clip_polygon(vertices, self.box)
             if not clipped_vertices:

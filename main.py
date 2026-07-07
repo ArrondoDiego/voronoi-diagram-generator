@@ -32,17 +32,17 @@ def main():
         for i, p in enumerate(points, 1):
             print(f"  Point {i}: ({p.x}, {p.y})")
 
-    # 1. Definizione dei due domini
+    # 1. Define the two domains
     universe_box = [Point(-10000, -10000), Point(10000, -10000), Point(10000, 10000), Point(-10000, 10000)]
     display_box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
     
-    # 2. Computazione
+    # 2. Computation
     v = FortuneVoronoi(points)
     edges = v.compute()
     
-    # 3. Estrazione chiusa all'infinito
+    # 3. Infinite-closed extraction
     cells = extract_cells(edges, universe_box, points)    
-    # 4. Clipping geometrico esatto per lo schermo
+    # 4. Exact geometric clipping for the screen
     clipped_cells = {}
     for site, vertices in cells.items():
         clipped_vertices = clip_polygon(vertices, display_box)

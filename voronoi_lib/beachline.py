@@ -8,16 +8,16 @@ class BeachNode:
         self.left = None
         self.right = None
         
-        # NUOVO: Proprietà per il bilanciamento AVL
+        # NEW: Properties for AVL balancing
         self.height = 1  
         
-        # Attributi per le Foglie (Archi reali)
+        # Attributes for Leaves (Actual Arcs)
         self.site = site
         self.event = None  
         self.prev = None   
         self.next = None   
         
-        # Attributi per i Nodi Interni (Breakpoint)
+        # Attributes for Internal Nodes (Breakpoints)
         self.left_site = None
         self.right_site = None
         self.edge = None
@@ -52,13 +52,13 @@ class BeachLine:
             return None
 
         node = self._root
-        # Discendi l'albero fino a trovare una foglia
+        # Descend the tree until finding a leaf
         while not node.is_leaf:
             bps = self.get_breakpoints(node.left_site, node.right_site, sweep_y)
             if bps is None:
                 return node
 
-            # Seleziona il breakpoint attivo in base all'altezza relativa dei siti
+            # Select the active breakpoint based on relative site heights
             if node.left_site.y < node.right_site.y:
                 active_bp = bps[1]
             else:
@@ -115,11 +115,11 @@ class BeachLine:
         y = z.right
         T2 = y.left
 
-        # Esegui la rotazione
+        # Perform the rotation
         y.left = z
         z.right = T2
 
-        # Aggiorna i puntatori 'parent'
+        # Update 'parent' pointers
         y.parent = z.parent
         if z.parent is None:
             self._root = y
@@ -132,7 +132,7 @@ class BeachLine:
         if T2:
             T2.parent = z
 
-        # Aggiorna le altezze
+        # Update heights
         self.update_height(z)
         self.update_height(y)
         return y
@@ -141,11 +141,11 @@ class BeachLine:
         y = z.left
         T3 = y.right
 
-        # Esegui la rotazione
+        # Perform the rotation
         y.right = z
         z.left = T3
 
-        # Aggiorna i puntatori 'parent'
+        # Update 'parent' pointers
         y.parent = z.parent
         if z.parent is None:
             self._root = y
@@ -158,28 +158,28 @@ class BeachLine:
         if T3:
             T3.parent = z
 
-        # Aggiorna le altezze
+        # Update heights
         self.update_height(z)
         self.update_height(y)
         return y
 
     def rebalance(self, node):
-        """Risale l'albero dal nodo dato fino alla radice, bilanciando dove necessario."""
+        """Rebalances tree from given node up to root, rotating where necessary."""
         while node is not None:
             self.update_height(node)
             bf = self.balance_factor(node)
 
-            # Caso Left Left
+            # Case Left Left
             if bf > 1 and self.balance_factor(node.left) >= 0:
                 node = self._rotate_right(node)
-            # Caso Right Right
+            # Case Right Right
             elif bf < -1 and self.balance_factor(node.right) <= 0:
                 node = self._rotate_left(node)
-            # Caso Left Right
+            # Case Left Right
             elif bf > 1 and self.balance_factor(node.left) < 0:
                 node.left = self._rotate_left(node.left)
                 node = self._rotate_right(node)
-            # Caso Right Left
+            # Case Right Left
             elif bf < -1 and self.balance_factor(node.right) > 0:
                 node.right = self._rotate_right(node.right)
                 node = self._rotate_left(node)

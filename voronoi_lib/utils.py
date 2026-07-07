@@ -72,7 +72,7 @@ def extract_cells(edges, universe_box, all_sites):
 
     cells = {}
     for site, vertices in cell_vertices.items():
-        # 1. PULIZIA: Rimuoviamo i duplicati generati dai float
+        # 1. CLEANUP: Remove float-generated duplicates
         unique_verts = []
         for v in vertices:
             if not any(math.hypot(v.x - u.x, v.y - u.y) < 1e-6 for u in unique_verts):
@@ -81,13 +81,13 @@ def extract_cells(edges, universe_box, all_sites):
         if len(unique_verts) < 3:
             continue
 
-        # 2. ORDINAMENTO: Ora math.atan2 funzionerà perfettamente
+        # 2. SORT: Now math.atan2 will work perfectly
         sorted_vertices = sorted(
             unique_verts,
             key=lambda v: math.atan2(v.y - site.y, v.x - site.x)
         )
         
-        # 3. CHIUSURA: Per assicurarci che Sutherland-Hodgman non salti l'ultimo spigolo
+        # 3. CLOSURE: Ensure Sutherland-Hodgman doesn't skip the last edge
         if sorted_vertices:
             sorted_vertices.append(sorted_vertices[0])
             
