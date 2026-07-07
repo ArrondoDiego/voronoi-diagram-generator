@@ -1,6 +1,6 @@
+import math
 from collections import defaultdict
 from voronoi_lib.point import Point
-import math 
 
 def ray_box_intersection(start, direction, box):
     min_x = min(p.x for p in box)
@@ -11,7 +11,6 @@ def ray_box_intersection(start, direction, box):
     t_min = float('inf')
     pt = None
 
-    # Controlla lati verticali (x = min_x, x = max_x)
     if abs(direction.x) > 1e-9:
         t1 = (min_x - start.x) / direction.x
         if t1 > 1e-9 and t1 < t_min:
@@ -23,7 +22,6 @@ def ray_box_intersection(start, direction, box):
             t_min = t2
             pt = Point(max_x, start.y + t2 * direction.y)
 
-    # Controlla lati orizzontali (y = min_y, y = max_y)
     if abs(direction.y) > 1e-9:
         t3 = (min_y - start.y) / direction.y
         if t3 > 1e-9 and t3 < t_min:
@@ -37,59 +35,62 @@ def ray_box_intersection(start, direction, box):
 
     return pt
 
-def extract_cells(edges, universe_box, all_sites):
-    cell_vertices = defaultdict(set)
+def dist_sq(p, s):
+    return (p.x - s.x)**2 + (p.y - s.y)**2
 
-    # Helper analitico per la distanza al quadrato
-    def dist_sq(p, s):
-        return (p.x - s.x)**2 + (p.y - s.y)**2
+def extract_cells(edges, universe_box, all_sites):
+    cell_vertices = defaultdict(list)
 
     for edge in edges:
         if getattr(edge, 'start', None):
-            cell_vertices[edge.left].add(edge.start)
-            cell_vertices[edge.right].add(edge.start)
+            cell_vertices[edge.left].append(edge.start)
+            cell_vertices[edge.right].append(edge.start)
             
         if getattr(edge, 'end', None):
-            cell_vertices[edge.left].add(edge.end)
-            cell_vertices[edge.right].add(edge.end)
+            cell_vertices[edge.left].append(edge.end)
+            cell_vertices[edge.right].append(edge.end)
             
         elif getattr(edge, 'direction', None):
-            # IL TEST INFALLIBILE
-            # Testiamo empiricamente quale dei due versi del raggio si allontana dal diagramma
-            test_t = 10000
             dir_x, dir_y = edge.direction.x, edge.direction.y
             start_pt = edge.start
             
-            # Generiamo due punti lontanissimi nelle due direzioni opposte
+            test_t = 1000
             pt1 = Point(start_pt.x + dir_x * test_t, start_pt.y + dir_y * test_t)
             pt2 = Point(start_pt.x - dir_x * test_t, start_pt.y - dir_y * test_t)
             
-            # Calcoliamo quante volte pt1 è più vicino a un altro sito rispetto al suo sito legittimo (edge.left)
             dist1 = dist_sq(pt1, edge.left)
-            violations1 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt1, s) < dist1)
-            
-            # Facciamo lo stesso per pt2
+            v1 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt1, s) < dist1)
             dist2 = dist_sq(pt2, edge.left)
-            violations2 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt2, s) < dist2)
+            v2 = sum(1 for s in all_sites if s != edge.left and s != edge.right and dist_sq(pt2, s) < dist2)
             
-            # La verità geometrica: la direzione corretta esce verso il vuoto, subendo meno violazioni
-            final_dir = edge.direction if violations1 <= violations2 else Point(-dir_x, -dir_y)
+            final_dir = edge.direction if v1 <= v2 else Point(-dir_x, -dir_y)
             
-            # Calcoliamo l'intersezione solo con la direzione confermata
             pt = ray_box_intersection(start_pt, final_dir, universe_box)
             if pt:
-                cell_vertices[edge.left].add(pt)
-                cell_vertices[edge.right].add(pt)
+                cell_vertices[edge.left].append(pt)
+                cell_vertices[edge.right].append(pt)
 
     cells = {}
     for site, vertices in cell_vertices.items():
-        # L'ordinamento ripristinerà il poligono convesso perfetto
+        # 1. PULIZIA: Rimuoviamo i duplicati generati dai float
+        unique_verts = []
+        for v in vertices:
+            if not any(math.hypot(v.x - u.x, v.y - u.y) < 1e-6 for u in unique_verts):
+                unique_verts.append(v)
+        
+        if len(unique_verts) < 3:
+            continue
+
+        # 2. ORDINAMENTO: Ora math.atan2 funzionerà perfettamente
         sorted_vertices = sorted(
-            list(vertices),
+            unique_verts,
             key=lambda v: math.atan2(v.y - site.y, v.x - site.x)
         )
+        
+        # 3. CHIUSURA: Per assicurarci che Sutherland-Hodgman non salti l'ultimo spigolo
+        if sorted_vertices:
+            sorted_vertices.append(sorted_vertices[0])
+            
         cells[site] = sorted_vertices
 
     return cells
-
-# All'interno di extract_cells in utils.py

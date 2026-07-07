@@ -73,7 +73,7 @@ class VoronoiGUI:
         self._setup_axes()
         self.fig.canvas.draw()
 
-    def on_compute_click(self, event):  
+    def on_compute_click(self, event):
         if self.computed or len(self.points) < 2:
             print("Insert at least 2 points")
             return
@@ -81,25 +81,20 @@ class VoronoiGUI:
         self.computed = True
         self.fig.canvas.draw()
 
-        # 1. Definiamo il "Bounding Box dell'Universo"
-        # È topologicamente sufficientemente grande da contenere tutti i veri vertici di Voronoi
-        # e serve per chiudere le semirette aperte.
+        # Definiamo il dominio infinito
         universe_box = [
-            Point(-10000, -10000),
-            Point(10000, -10000),
-            Point(10000, 10000),
-            Point(-10000, 10000)
+            Point(-10000, -10000), Point(10000, -10000), 
+            Point(10000, 10000), Point(-10000, 10000)
         ]
 
-        # 2. Computazione puramente basata sui dati REALI
+        # Esecuzione matematica senza dati fittizi
         v = FortuneVoronoi(self.points)
         edges = v.compute()
         
-        # 3. Estrazione dei vertici e chiusura dei raggi verso l'infinito
+        # Estrazione passando i siti reali per l'autoverifica vettoriale
         cells = extract_cells(edges, universe_box, self.points)
-        # 4. Clipping geometrico esatto per lo schermo 
-        # (Sutherland-Hodgman taglierà i macro-poligoni creando automaticamente 
-        # i vertici sugli angoli dello schermo dove necessario)
+
+        # Rendering e Clipping per lo schermo (0-100)
         for i, (site, vertices) in enumerate(cells.items()):
             clipped_vertices = clip_polygon(vertices, self.box)
             if not clipped_vertices:
@@ -111,8 +106,9 @@ class VoronoiGUI:
             color = self.colors[i % len(self.colors)]
             self.ax.fill(xs, ys, color=color, alpha=0.6, edgecolor='#2b2d42', linewidth=1.5)
 
-        self.ax.set_title(f"Voronoi Diagram", fontsize=14, fontweight='bold')
+        self.ax.set_title("Voronoi Diagram", fontsize=14, fontweight='bold')
         self.fig.canvas.draw()
+
 def main():
     gui = VoronoiGUI()
     plt.show()
