@@ -1,17 +1,28 @@
 import math
 from voronoi_lib.point import Point
 
-class Arc:
-    def __init__(self, site):
+class BeachNode:
+    def __init__(self, site=None, is_leaf=False):
+        self.is_leaf = is_leaf
+        self.parent = None
+        self.left = None
+        self.right = None
+        
+        # Attributi per le Foglie (Archi reali)
         self.site = site
-        self.prev = None
-        self.next = None
-        self.event = None
-        self.edge_left = None
-        self.edge_right = None
+        self.event = None  # Puntatore al CircleEvent
+        self.prev = None   # Puntatore geometrico all'arco sinistro vicino
+        self.next = None   # Puntatore geometrico all'arco destro vicino
+        
+        # Attributi per i Nodi Interni (Breakpoint)
+        self.left_site = None
+        self.right_site = None
+        self.edge = None   # Il VoronoiEdge associato a questo breakpoint
 
     def __repr__(self):
-        return f"Arc({self.site})"
+        if self.is_leaf:
+            return f"Leaf({self.site})"
+        return f"Breakpoint(<{self.left_site}, {self.right_site}>)"
 
 
 class BeachLine:
@@ -22,26 +33,11 @@ class BeachLine:
     def root(self):
         return self._root
 
-    def set_root(self, arc):
-        self._root = arc
+    def set_root(self, node):
+        self._root = node
 
     def is_empty(self):
         return self._root is None
-
-    def insert_after(self, anchor, new_arc):
-        new_arc.prev = anchor
-        new_arc.next = anchor.next
-        if anchor.next:
-            anchor.next.prev = new_arc
-        anchor.next = new_arc
-
-    def remove(self, arc):
-        if arc.prev:
-            arc.prev.next = arc.next
-        if arc.next:
-            arc.next.prev = arc.prev
-        if arc is self._root:
-            self._root = arc.next
 
     def parabola_x(self, site, directrix_y, x_query):
         if abs(site.y - directrix_y) < 1e-9:
@@ -52,24 +48,27 @@ class BeachLine:
         if self._root is None:
             return None
 
-        arc = self._root
-        while arc.next is not None:
-            bps = self.get_breakpoints(arc, arc.next, sweep_y)
+        node = self._root
+        # Discendi l'albero fino a trovare una foglia
+        while not node.is_leaf:
+            bps = self.get_breakpoints(node.left_site, node.right_site, sweep_y)
             if bps is None:
-                return arc
+                return node
 
-            if arc.site.y < arc.next.site.y:
+            # Seleziona il breakpoint attivo in base all'altezza relativa dei siti
+            if node.left_site.y < node.right_site.y:
                 active_bp = bps[1]
             else:
                 active_bp = bps[0]
 
             if point.x < active_bp:
-                return arc
-            arc = arc.next
-        return arc
+                node = node.left
+            else:
+                node = node.right
+        return node
 
     def get_breakpoints(self, left, right, sweep_y):
-        p1, p2 = left.site, right.site
+        p1, p2 = left, right
         d = sweep_y
 
         if abs(p1.y - d) < 1e-9 and abs(p2.y - d) < 1e-9:

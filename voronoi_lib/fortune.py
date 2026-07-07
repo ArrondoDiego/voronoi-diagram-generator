@@ -1,9 +1,9 @@
 import math
 from voronoi_lib.point import Point, circumcenter
 from voronoi_lib.event import Event, SiteEvent, CircleEvent, EventQueue
-from voronoi_lib.beachline import Arc, BeachLine
-from voronoi_lib.edge import VoronoiEdge
 
+from voronoi_lib.edge import VoronoiEdge
+from voronoi_lib.beachline import BeachNode, BeachLine
 
 class FortuneVoronoi:
     def __init__(self, points):
@@ -44,50 +44,85 @@ class FortuneVoronoi:
         p = event.point
 
         if self._beach.is_empty():
-            self._beach.set_root(Arc(p))
+            self._beach.set_root(BeachNode(p, is_leaf=True))
             return
 
+        # Ricerca binaria sull'albero
         arc = self._beach.find_arc_above(p, p.y)
 
         if arc.event is not None:
             arc.event.valid = False
             arc.event = None
 
-        mid_arc = Arc(p)
-        left_arc = Arc(arc.site)
-
-        left_arc.prev = arc.prev
-        left_arc.next = mid_arc
-        left_arc.edge_left = arc.edge_left
-
-        mid_arc.prev = left_arc
-        mid_arc.next = arc
-
-        if arc.prev is not None:
-            arc.prev.next = left_arc
-        elif self._beach.root is arc:
-            self._beach.set_root(left_arc)
-
-        arc.prev = mid_arc
-
         start_y = self._beach.parabola_x(arc.site, p.y, p.x)
         start_point = Point(p.x, start_y)
 
-        edge1 = VoronoiEdge(start_point, left_arc.site, mid_arc.site)
+        # 1. Crea le nuove foglie (archi)
+        left_leaf = BeachNode(arc.site, is_leaf=True)
+        mid_leaf = BeachNode(p, is_leaf=True)
+        right_leaf = BeachNode(arc.site, is_leaf=True)
+
+        # Mantieni i puntatori orizzontali solo sulle foglie per i cerchi in O(1)
+        left_leaf.prev = arc.prev
+        if arc.prev:
+            arc.prev.next = left_leaf
+        left_leaf.next = mid_leaf
+
+        mid_leaf.prev = left_leaf
+        mid_leaf.next = right_leaf
+
+        right_leaf.prev = mid_leaf
+        right_leaf.next = arc.next
+        if arc.next:
+            arc.next.prev = right_leaf
+
+        # 2. Crea i nodi interni (i due nuovi breakpoint associati)
+        bp_left = BeachNode(is_leaf=False)
+        bp_left.left_site = arc.site
+        bp_left.right_site = p
+
+        bp_right = BeachNode(is_leaf=False)
+        bp_right.left_site = p
+        bp_right.right_site = arc.site
+
+        # 3. Assembla il sottoalbero locale
+        bp_left.left = left_leaf
+        left_leaf.parent = bp_left
+
+        bp_left.right = bp_right
+        bp_right.parent = bp_left
+
+        bp_right.left = mid_leaf
+        mid_leaf.parent = bp_right
+
+        bp_right.right = right_leaf
+        right_leaf.parent = bp_right
+
+        # 4. Sostituisci la vecchia foglia 'arc' con il nuovo sottoalbero nell'albero principale
+        bp_left.parent = arc.parent
+        if arc.parent is None:
+            self._beach.set_root(bp_left)
+        else:
+            if arc.parent.left == arc:
+                arc.parent.left = bp_left
+            else:
+                arc.parent.right = bp_left
+
+        # 5. Generazione dei segmenti geometrici
+        edge1 = VoronoiEdge(start_point, arc.site, p)
+        edge2 = VoronoiEdge(start_point, p, arc.site)
         self.edges.append(edge1)
-        mid_arc.edge_left = edge1
-        left_arc.edge_right = edge1
-
-        edge2 = VoronoiEdge(start_point, mid_arc.site, arc.site)
         self.edges.append(edge2)
-        arc.edge_left = edge2
-        mid_arc.edge_right = edge2
 
-        if left_arc.prev is not None:
-            self._check_circle_event(left_arc.prev, left_arc, mid_arc, p.y)
+        bp_left.edge = edge1
+        bp_right.edge = edge2
 
-        if arc.next is not None:
-            self._check_circle_event(mid_arc, arc, arc.next, p.y)
+        # Verifica i potenziali Circle Event usando la catena di foglie orizzontali
+        if left_leaf.prev is not None:
+            self._check_circle_event(left_leaf.prev, left_leaf, mid_leaf, p.y)
+
+        if right_leaf.next is not None:
+            self._check_circle_event(mid_leaf, right_leaf, right_leaf.next, p.y)
 
     def _handle_circle(self, event):
         arc = event.arc
@@ -107,24 +142,58 @@ class FortuneVoronoi:
         vertex = event.center
         self.vertices.append(vertex)
 
-        if arc.edge_left is not None:
-            arc.edge_left.end = vertex
-        if arc.edge_right is not None:
-            arc.edge_right.end = vertex
+        p = arc.parent
+        
+        # Cerca l'altro breakpoint nell'albero che collassa in questo medesimo vertice
+        highest_changed_ancestor = None
+        curr = p
+        while curr.parent is not None:
+            if curr.parent.left_site == arc.site or curr.parent.right_site == arc.site:
+                highest_changed_ancestor = curr.parent
+                break
+            curr = curr.parent
 
+        # Chiudi i vecchi spigoli nel vertice calcolato
+        if p.edge is not None:
+            p.edge.end = vertex
+        if highest_changed_ancestor and highest_changed_ancestor.edge is not None:
+            highest_changed_ancestor.edge.end = vertex
+
+        # Sgancia la foglia dalla lista orizzontale
         left_arc.next = right_arc
         right_arc.prev = left_arc
 
+        # Rimuovi la foglia 'arc' dall'albero binario: il fratello prende il posto del padre
+        gp = p.parent
+        sib = p.right if p.left == arc else p.left
+        sib.parent = gp
+
+        if gp is None:
+            self._beach.set_root(sib)
+        else:
+            if gp.left == p:
+                gp.left = sib
+            else:
+                gp.right = sib
+
+        # Crea il nuovo spigolo che parte dal vertice appena scoperto
         new_edge = VoronoiEdge(vertex, left_arc.site, right_arc.site)
         self.edges.append(new_edge)
-        left_arc.edge_right = new_edge
-        right_arc.edge_left = new_edge
 
+        # Aggiorna il breakpoint superstite con la nuova coppia di siti confinanti
+        if highest_changed_ancestor:
+            if highest_changed_ancestor.left_site == arc.site:
+                highest_changed_ancestor.left_site = left_arc.site
+            elif highest_changed_ancestor.right_site == arc.site:
+                highest_changed_ancestor.right_site = right_arc.site
+            highest_changed_ancestor.edge = new_edge
+
+        # Controlla le nuove triplette adiacenti per i prossimi circle event
         if left_arc.prev is not None:
             self._check_circle_event(left_arc.prev, left_arc, right_arc, event.point.y)
         if right_arc.next is not None:
             self._check_circle_event(left_arc, right_arc, right_arc.next, event.point.y)
-
+            
     def _check_circle_event(self, left, mid, right, sweep_y):
         if left is None or mid is None or right is None:
             return
