@@ -4,7 +4,10 @@ from collections import defaultdict
 from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
-from voronoi_lib.visualization import save_voronoi_image
+from voronoi_lib.visualization import save_image
+
+DEBUG = False
+
 def extract_cells(edges):
     cell_vertices = defaultdict(set)
 
@@ -26,22 +29,24 @@ def extract_cells(edges):
 
     return cells
 
-
 def main():
-    choice = input("Use [r]andom or [c]ustom points? (r/c): ").strip().lower()
+    choice = input("Use [r]andom or [c]ustom points?: ").strip().lower()
     points = []
 
     if choice == "c":
-        print("Enter 5 points (x y):")
+        print("Enter 5 points (x y) between -100 and 100:")
         for i in range(5):
             while True:
                 try:
                     x, y = map(int, input(f"  {i+1}: ").split())
-                    points.append(Point(x, y))
-                    break
+                    if 0 <= x <= 100 and 0 <= y <= 100:
+                        points.append(Point(x, y))
+                        break 
+                    else:
+                        print(" Coordinates must be between -100 and 100")
                 except ValueError:
-                    print("  Invalid. Use: x y")
-    else:
+                    print(" Invalid, use: x y")
+    else:  # choice r
         for _ in range(5):
             points.append(Point(random.randint(0, 100), random.randint(0, 100)))
         for i, p in enumerate(points, 1):
@@ -51,29 +56,28 @@ def main():
     edges = v.compute()
     print(f"\n{len(edges)} edges, {len(v.vertices)} vertices")
     cells = extract_cells(edges)
-
-    print("\n--- VORONOI CELLS ---")
-    for i, (site, vertices) in enumerate(cells.items(), 1):
-        print(f"Cell for Site {site}:")
-        for vert in vertices:
-            print(f"  -> Vertex ({vert.x:.2f}, {vert.y:.2f})")
-
+    if DEBUG: 
+        print("\n--- VORONOI CELLS ---\n")
+        for i, (site, vertices) in enumerate(cells.items(), 1):
+            print(f"Cell for Site {site}:")
+            for vert in vertices:
+                print(f"- Vertex ({vert.x:.2f}, {vert.y:.2f})")
+    
+    # sizes of canvas to save the image
     box = [
         Point(0, 0),
         Point(100, 0),
         Point(100, 100),
         Point(0, 100)
     ]
-
-    print("\n--- CLIPPED CELLS ---")
+    
     clipped_cells = {}
     for site, vertices in cells.items():
         clipped_vertices = clip_polygon(vertices, box)
         if clipped_vertices:
             clipped_cells[site] = clipped_vertices
 
-    save_voronoi_image(points, clipped_cells, box, "voronoi_output.png")
-
+    save_image(points, clipped_cells, box, "voronoi_output.png")
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def save_voronoi_image(points, cells, clip_box, filename="voronoi.png"):
+def save_image(points, cells, clip_box, filename="voronoi.png"):
     fig, ax = plt.subplots(figsize=(8, 8))
 
     min_x = min(p.x for p in clip_box)

@@ -91,18 +91,17 @@ class VoronoiGUI:
         self.fig.canvas.draw()
 
     def on_compute_click(self, event):
-        if self.computed or len(self.points) < 3:
-            print("Inserisci almeno 3 punti prima di calcolare.")
+        if self.computed or len(self.points) < 2:
+            print("Insert at least 2 points")
             return
 
         self.computed = True
-        self.ax.set_title("Calcolo in corso...", fontsize=12)
         self.fig.canvas.draw()
 
-        # --- IL TRUCCO DEI SITI FITTIZI ---
-        # Aggiungiamo 4 punti lontanissimi e leggermente sfalsati decimalmente 
-        # (per aggirare la divisione per zero in parabola_x del caso degenere).
-        # Questo costringerà tutte le celle nello schermo a chiudersi perfettamente.
+        # --- THE DUMMY SITES TRICK ---
+        # Add 4 very far away points, slightly offset by decimals
+        # (to circumvent division by zero in parabola_x in degenerate cases).
+        # This forces all cells on screen to close perfectly.
         dummy_sites = [
             Point(-1000, -1000.1),
             Point(1000, -1000.2),
@@ -111,17 +110,17 @@ class VoronoiGUI:
         ]
         all_points = self.points + dummy_sites
 
-        # Esecuzione matematica con i punti aggiuntivi
+        # Compute with additional points
         v = FortuneVoronoi(all_points)
         edges = v.compute()
         cells = extract_cells(edges)
 
-        # Rimuoviamo le celle dei siti fittizi per non disegnarle
+        # Remove dummy site cells to avoid drawing them
         for dummy in dummy_sites:
             if dummy in cells:
                 del cells[dummy]
 
-        # Ritaglio e rendering geometrico (invariato)
+        # Clipping and geometric rendering (unchanged)
         for i, (site, vertices) in enumerate(cells.items()):
             clipped_vertices = clip_polygon(vertices, self.box)
             if not clipped_vertices:
@@ -133,7 +132,7 @@ class VoronoiGUI:
             color = self.colors[i % len(self.colors)]
             self.ax.fill(xs, ys, color=color, alpha=0.6, edgecolor='#2b2d42', linewidth=1.5)
 
-        self.ax.set_title(f"Diagramma di Voronoi ({len(self.points)} siti)", fontsize=14, fontweight='bold')
+        self.ax.set_title(f"Voronoi Diagram", fontsize=14, fontweight='bold')
         self.fig.canvas.draw()
 
 def main():
