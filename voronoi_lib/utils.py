@@ -2,7 +2,7 @@ import math
 from voronoi_lib.point import Point
 
 def extract_cells(dcel, all_sites):
-    # Collects the vertex sequence for each site's Voronoi cell from the DCEL.
+    # collects the vertex sequence for each site's Voronoi cell from the DCEL.
     # - Gathers all endpoints of half-edges belonging to the site.
     # - Adds bounding-box corners whose nearest site is this one (so cells
     #   that extend to the box perimeter form closed polygons).

@@ -134,7 +134,7 @@ class FortuneVoronoi:
 
         highest_changed_ancestor = None
         curr = p
-        # Walk up the beach line tree to find the highest ancestor that shares
+        # walk up the beach line tree to find the highest ancestor that shares
         # the disappearing arc's site. This is the other breakpoint that
         # converges at this circle event vertex.
         if p.left == arc:
@@ -151,7 +151,7 @@ class FortuneVoronoi:
 
         he_left_face = None
         he_arc_face = None
-        # Identify which of the two converging half-edges lies on the left
+        # identify which of the two converging half-edges lies on the left
         # arc's face and which on the disappearing arc's face.
         for he in (he_p, he_hca):
             if he is None:
@@ -161,7 +161,7 @@ class FortuneVoronoi:
             elif he.site == arc.site:
                 he_arc_face = he
 
-        # Close old half-edges at the vertex — set twin.origin so the incoming
+        # close old half-edges at the vertex — set twin.origin so the incoming
         # half-edge terminates at this Voronoi vertex.
         if he_left_face is not None:
             he_left_face.twin.origin = vertex
@@ -334,7 +334,7 @@ class FortuneVoronoi:
                 curr = curr.next
 
     def _ray_box_intersection(self, start, direction, box):
-        # Compute the smallest positive t where the ray p = start + t*direction
+        # compute the smallest positive t where the ray p = start + t*direction
         # hits any of the four axis-aligned bounding box planes.
         min_x = min(p.x for p in box)
         max_x = max(p.x for p in box)

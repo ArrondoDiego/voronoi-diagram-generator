@@ -56,7 +56,7 @@ class BeachLine:
             if bps is None:
                 return node
 
-            # Select the active breakpoint based on relative site heights
+            # select the active breakpoint based on relative site heights
             if node.left_site.y < node.right_site.y:
                 active_bp = bps[1]
             else:
@@ -94,7 +94,7 @@ class BeachLine:
 
         disc = b * b - 4 * a * c
         if disc < 0:
-            # dscriminant
+            # discriminant
             if disc > -1e-9:
                 disc = 0
             else:
@@ -167,17 +167,17 @@ class BeachLine:
             self.update_height(node)
             bf = self.balance_factor(node)
 
-            # Case Left Left
+            # left left
             if bf > 1 and self.balance_factor(node.left) >= 0:
                 node = self._rotate_right(node)
-            # Case Right Right
+            # right right
             elif bf < -1 and self.balance_factor(node.right) <= 0:
                 node = self._rotate_left(node)
-            # Case Left Right
+            # left right
             elif bf > 1 and self.balance_factor(node.left) < 0:
                 node.left = self._rotate_left(node.left)
                 node = self._rotate_right(node)
-            # Case Right Left
+            # right left
             elif bf < -1 and self.balance_factor(node.right) > 0:
                 node.right = self._rotate_right(node.right)
                 node = self._rotate_left(node)

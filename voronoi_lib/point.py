@@ -18,8 +18,8 @@ class Point:
 
 
 def circumcenter(a, b, c):
-    # Solves the linear system for the circumcenter of three points using
-    # Cramer's rule.  Returns None when the points are collinear (denom ≈ 0).
+    # solves the linear system for the circumcenter of three points using
+    # cramer's rule,  returns None when the points are collinear (denom ≈ 0).
     A1 = 2 * (b.x - a.x)
     B1 = 2 * (b.y - a.y)
     C1 = b.x**2 + b.y**2 - a.x**2 - a.y**2
