@@ -1,7 +1,7 @@
 /__pycache__/*
 /voronoi_lib/__pycache__/*
 /.vscode/*
-/docs/*
+/docs/*.md
 *.png
 main.py
 TODO.txt
