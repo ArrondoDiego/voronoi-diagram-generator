@@ -1,6 +1,5 @@
 import math
 import random
-from collections import defaultdict
 from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon

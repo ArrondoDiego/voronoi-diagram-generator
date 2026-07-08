@@ -59,6 +59,4 @@ class EventQueue:
         return len(self._heap) == 0
 
     def __len__(self):
-        if self._heap:
-            return len(self._heap)
-        return 0
+        return len(self._heap)

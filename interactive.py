@@ -1,11 +1,9 @@
-import math
 import random
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
-from collections import defaultdict
 from voronoi_lib.utils import extract_cells
 
 
@@ -51,7 +49,6 @@ class VoronoiGUI:
             self.points.append(Point(x, y))
             self.ax.scatter([x], [y], color='#d90429', zorder=5, s=40)
             self.fig.canvas.draw()
-            print(f'added new point({x}, {y})')
 
     def on_random_click(self, event):
         if self.computed:
