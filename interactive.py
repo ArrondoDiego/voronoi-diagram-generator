@@ -51,6 +51,7 @@ class VoronoiGUI:
             self.points.append(Point(x, y))
             self.ax.scatter([x], [y], color='#d90429', zorder=5, s=40)
             self.fig.canvas.draw()
+            print(f'added new point({x}, {y})')
 
     def on_random_click(self, event):
         if self.computed:
