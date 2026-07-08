@@ -10,13 +10,13 @@ class BeachNode:
         
         self.height = 1  
         
-        # Attributes for Leaves (Actual Arcs)
+        # attributes for leaves (arcs)
         self.site = site
         self.event = None  
         self.prev = None   
         self.next = None   
         
-        # Attributes for Internal Nodes (Breakpoints)
+        # attributes for internal nodes (breakpoints)
         self.left_site = None
         self.right_site = None
         self.edge = None
@@ -94,7 +94,7 @@ class BeachLine:
 
         disc = b * b - 4 * a * c
         if disc < 0:
-            # Discriminant slightly negative due to FP error — clamp to zero
+            # dscriminant
             if disc > -1e-9:
                 disc = 0
             else:

@@ -280,7 +280,7 @@ class FortuneVoronoi:
                 fx /= length
                 fy /= length
 
-            # One of the two ends is bounded (set by a circle event), the other
+            # one of the two ends is bounded (set by a circle event), the other
             # is unbounded — cast a ray from the known vertex to the box.
             if he.origin is None and he.twin.origin is not None:
                 known = he.twin.origin.point
@@ -294,7 +294,7 @@ class FortuneVoronoi:
                 if isec:
                     he.twin.origin = self.dcel.create_vertex(isec)
 
-            # Both ends unbounded (no circle events for this edge) — cast
+            # both ends unbounded (no circle events for this edge) — cast
             # rays in both directions from the midpoint between the two sites.
             elif he.origin is None and he.twin.origin is None:
                 mx = (he.site.x + he.twin.site.x) / 2
@@ -307,6 +307,7 @@ class FortuneVoronoi:
                 if isec_fwd and isec_bwd:
                     he.origin = self.dcel.create_vertex(isec_bwd)
                     he.twin.origin = self.dcel.create_vertex(isec_fwd)
+
     def _build_faces(self):
         visited = set()
         for he in self.dcel.half_edges:
