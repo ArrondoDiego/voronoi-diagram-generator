@@ -8,7 +8,6 @@ class BeachNode:
         self.left = None
         self.right = None
         
-        # NEW: Properties for AVL balancing
         self.height = 1  
         
         # Attributes for Leaves (Actual Arcs)
@@ -52,7 +51,6 @@ class BeachLine:
             return None
 
         node = self._root
-        # Descend the tree until finding a leaf
         while not node.is_leaf:
             bps = self.get_breakpoints(node.left_site, node.right_site, sweep_y)
             if bps is None:
@@ -75,7 +73,9 @@ class BeachLine:
         d = sweep_y
 
         if abs(p1.y - d) < 1e-9 and abs(p2.y - d) < 1e-9:
-            return None
+            x = (p1.x + p2.x) / 2
+            return (x, x)
+
         if abs(p1.y - d) < 1e-9:
             x = p1.x
             return (x, x)
@@ -94,7 +94,11 @@ class BeachLine:
 
         disc = b * b - 4 * a * c
         if disc < 0:
-            return None
+            # Discriminant slightly negative due to FP error — clamp to zero
+            if disc > -1e-9:
+                disc = 0
+            else:
+                return None
 
         x1 = (-b - math.sqrt(disc)) / (2 * a)
         x2 = (-b + math.sqrt(disc)) / (2 * a)
@@ -115,11 +119,9 @@ class BeachLine:
         y = z.right
         T2 = y.left
 
-        # Perform the rotation
         y.left = z
         z.right = T2
 
-        # Update 'parent' pointers
         y.parent = z.parent
         if z.parent is None:
             self._root = y
@@ -132,7 +134,6 @@ class BeachLine:
         if T2:
             T2.parent = z
 
-        # Update heights
         self.update_height(z)
         self.update_height(y)
         return y
@@ -141,11 +142,9 @@ class BeachLine:
         y = z.left
         T3 = y.right
 
-        # Perform the rotation
         y.right = z
         z.left = T3
 
-        # Update 'parent' pointers
         y.parent = z.parent
         if z.parent is None:
             self._root = y
@@ -158,13 +157,12 @@ class BeachLine:
         if T3:
             T3.parent = z
 
-        # Update heights
         self.update_height(z)
         self.update_height(y)
         return y
 
     def rebalance(self, node):
-        """Rebalances tree from given node up to root, rotating where necessary."""
+        """Rebalance from node up to root after an insertion or deletion."""
         while node is not None:
             self.update_height(node)
             bf = self.balance_factor(node)

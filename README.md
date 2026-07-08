@@ -23,7 +23,3 @@ python main.py
 # Interactive — click to place seeds, then press "Compute Voronoi"
 python interactive.py
 ```
-
-## Algorithm reference
-
-See `docs/algorithm.md` for the pseudocode and `docs/fortune_algorithm_explained.md` for the detailed explanation.

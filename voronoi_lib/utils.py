@@ -2,12 +2,16 @@ import math
 from voronoi_lib.point import Point
 
 def extract_cells(dcel, all_sites):
+    # Collects the vertex sequence for each site's Voronoi cell from the DCEL.
+    # - Gathers all endpoints of half-edges belonging to the site.
+    # - Adds bounding-box corners whose nearest site is this one (so cells
+    #   that extend to the box perimeter form closed polygons).
+    # - Sorts vertices angularly around the site to produce a correct winding order.
     cells = {}
     
-    # Ricreiamo lo stesso bounding box gigante usato in fortune.py
     if all_sites:
-        xs = [pt.x for pt in all_sites]
-        ys = [pt.y for pt in all_sites]
+        xs = [pt.x for pt in all_sites] + [v.point.x for v in dcel.vertices]
+        ys = [pt.y for pt in all_sites] + [v.point.y for v in dcel.vertices]
         margin = 1000
         min_x = min(xs) - margin
         max_x = max(xs) + margin
@@ -25,7 +29,6 @@ def extract_cells(dcel, all_sites):
         verts = []
         seen = set()
         
-        # 1. Raccogliamo i vertici di Voronoi e le intersezioni
         for he in dcel.half_edges:
             if he.site != site or he.origin is None:
                 continue
@@ -43,7 +46,6 @@ def extract_cells(dcel, all_sites):
                     seen.add(key2)
                     verts.append(pt2)
                     
-        # 2. Aggiungiamo gli angoli del bounding box se il sito è il loro vicino più prossimo
         for corner in box_corners:
             closest_site = min(all_sites, key=lambda s: (s.x - corner.x)**2 + (s.y - corner.y)**2)
             if closest_site == site:
@@ -63,7 +65,6 @@ def extract_cells(dcel, all_sites):
         if len(unique) < 3:
             continue
 
-        # 3. Ordinamento angolare per formare un poligono convesso perfetto
         unique.sort(key=lambda v: math.atan2(v.y - site.y, v.x - site.x))
         unique.append(unique[0])
         cells[site] = unique

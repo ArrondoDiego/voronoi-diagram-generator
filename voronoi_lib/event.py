@@ -11,6 +11,7 @@ class Event:
         self.valid = True
 
     def __lt__(self, other):
+        # Highest y first (sweep line descends); break ties by x.
         return (self.point.y > other.point.y) or (
             abs(self.point.y - other.point.y) < 1e-9
             and self.point.x < other.point.x

@@ -98,7 +98,6 @@ class FortuneVoronoi:
 
         self._beach.rebalance(bp_left)
 
-        # Create twin half-edges (Step 4 of HANDLESITEEVENT)
         he_left, he_right = self.dcel.create_twin_pair(
             site_a=arc.site, site_b=p
         )
@@ -129,14 +128,15 @@ class FortuneVoronoi:
             right_arc.event.valid = False
             right_arc.event = None
 
-        # Step 2 of HANDLECIRCLEEVENT: add vertex record
         vertex = self.dcel.create_vertex(event.center)
 
         p = arc.parent
 
         highest_changed_ancestor = None
         curr = p
-
+        # Walk up the beach line tree to find the highest ancestor that shares
+        # the disappearing arc's site. This is the other breakpoint that
+        # converges at this circle event vertex.
         if p.left == arc:
             while curr.parent is not None and curr.parent.left == curr:
                 curr = curr.parent
@@ -146,14 +146,13 @@ class FortuneVoronoi:
                 curr = curr.parent
             highest_changed_ancestor = curr.parent
 
-        # Identify the two converging half-edges
         he_p = p.edge
         he_hca = highest_changed_ancestor.edge if highest_changed_ancestor else None
 
-        # Determine which half-edge belongs to which face
         he_left_face = None
         he_arc_face = None
-
+        # Identify which of the two converging half-edges lies on the left
+        # arc's face and which on the disappearing arc's face.
         for he in (he_p, he_hca):
             if he is None:
                 continue
@@ -162,7 +161,8 @@ class FortuneVoronoi:
             elif he.site == arc.site:
                 he_arc_face = he
 
-        # Close old half-edges at the vertex (their END is at vertex)
+        # Close old half-edges at the vertex — set twin.origin so the incoming
+        # half-edge terminates at this Voronoi vertex.
         if he_left_face is not None:
             he_left_face.twin.origin = vertex
         if he_arc_face is not None:
@@ -185,7 +185,6 @@ class FortuneVoronoi:
 
         self._beach.rebalance(gp)
 
-        # Create new twin half-edges for the new breakpoint (Step 2)
         he_new_left, he_new_right = self.dcel.create_twin_pair(
             site_a=left_arc.site, site_b=right_arc.site
         )
@@ -209,7 +208,6 @@ class FortuneVoronoi:
             he_new_right.next = he_arc_face.twin
             he_arc_face.twin.prev = he_new_right
 
-        # Check new triples
         if left_arc.prev is not None:
             self._check_circle_event(left_arc.prev, left_arc, right_arc, event.point.y)
         if right_arc.next is not None:
@@ -233,6 +231,9 @@ class FortuneVoronoi:
         if bottom_y >= sweep_y:
             return
 
+        # The cross product of (mid-left) × (right-mid) determines whether the
+        # three arcs converge to a point. Only negative (clockwise) triples
+        # produce a circle event — positive means the arcs diverge.
         v1_x = mid.site.x - left.site.x
         v1_y = mid.site.y - left.site.y
         v2_x = right.site.x - mid.site.x
@@ -249,12 +250,9 @@ class FortuneVoronoi:
         self._queue.push(event)
 
     def _attach_to_bounding_box(self):
-        if self.dcel.vertices:
-            xs = [v.point.x for v in self.dcel.vertices]
-            ys = [v.point.y for v in self.dcel.vertices]
-        else:
-            xs = [pt.x for pt in self.points]
-            ys = [pt.y for pt in self.points]
+        xs = [pt.x for pt in self.points] + [v.point.x for v in self.dcel.vertices]
+        ys = [pt.y for pt in self.points] + [v.point.y for v in self.dcel.vertices]
+        
         margin = 1000
         min_x = min(xs) - margin
         max_x = max(xs) + margin
@@ -271,11 +269,9 @@ class FortuneVoronoi:
             box_vertices.append(v)
 
         for he in self.dcel.half_edges:
-            # 1. Se l'arco ha già sia l'origine che la fine, lo saltiamo
             if he.origin is not None and he.twin.origin is not None:
                 continue
 
-            # 2. Direzione topologica deterministica basata sulla tua DCEL
             fx = he.twin.site.y - he.site.y
             fy = he.site.x - he.twin.site.x
             
@@ -284,7 +280,8 @@ class FortuneVoronoi:
                 fx /= length
                 fy /= length
 
-            # 3. Risoluzione dei raggi infiniti
+            # One of the two ends is bounded (set by a circle event), the other
+            # is unbounded — cast a ray from the known vertex to the box.
             if he.origin is None and he.twin.origin is not None:
                 known = he.twin.origin.point
                 isec = self._ray_box_intersection(known, Point(-fx, -fy), box_corners)
@@ -297,14 +294,16 @@ class FortuneVoronoi:
                 if isec:
                     he.twin.origin = self.dcel.create_vertex(isec)
 
+            # Both ends unbounded (no circle events for this edge) — cast
+            # rays in both directions from the midpoint between the two sites.
             elif he.origin is None and he.twin.origin is None:
                 mx = (he.site.x + he.twin.site.x) / 2
                 my = (he.site.y + he.twin.site.y) / 2
                 mid = Point(mx, my)
-                
+
                 isec_fwd = self._ray_box_intersection(mid, Point(fx, fy), box_corners)
                 isec_bwd = self._ray_box_intersection(mid, Point(-fx, -fy), box_corners)
-                
+
                 if isec_fwd and isec_bwd:
                     he.origin = self.dcel.create_vertex(isec_bwd)
                     he.twin.origin = self.dcel.create_vertex(isec_fwd)
@@ -334,6 +333,8 @@ class FortuneVoronoi:
                 curr = curr.next
 
     def _ray_box_intersection(self, start, direction, box):
+        # Compute the smallest positive t where the ray p = start + t*direction
+        # hits any of the four axis-aligned bounding box planes.
         min_x = min(p.x for p in box)
         max_x = max(p.x for p in box)
         min_y = min(p.y for p in box)

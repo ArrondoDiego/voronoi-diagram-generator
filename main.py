@@ -34,14 +34,10 @@ def main():
 
     display_box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
 
-    # 2. Computation — returns DCEL (steps 1–8)
     v = FortuneVoronoi(points)
     dcel = v.compute()
 
-    # 3. Extract cells from DCEL
     cells = extract_cells(dcel, points)
-
-    # 4. Clip for display
     clipped_cells = {}
     for site, vertices in cells.items():
         clipped_vertices = clip_polygon(vertices, display_box)

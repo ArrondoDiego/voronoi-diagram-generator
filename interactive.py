@@ -36,7 +36,7 @@ class VoronoiGUI:
         self.btn_random.on_clicked(self.on_random_click)
 
     def _setup_axes(self):
-        self.ax.set_title("Click, use Random Points, or press 'Compute'", fontsize=12)
+        self.ax.set_title("Voronoi diagram generator", fontsize=12)
         self.ax.set_xlim(0, 100)
         self.ax.set_ylim(0, 100)
         self.ax.set_aspect('equal')
