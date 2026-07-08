@@ -1,5 +1,5 @@
 import heapq
-from voronoi_lib.point import Point
+from voronoi_lib.point import Point 
 
 class Event:
     SITE = 1

@@ -2,4 +2,5 @@
 /voronoi_lib/__pycache__/*
 /.vscode/*
 *.png
+main.py
 TODO.txt

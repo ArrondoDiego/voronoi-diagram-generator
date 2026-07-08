@@ -1,5 +1,5 @@
 import math
-from voronoi_lib.point import Point
+from voronoi_lib.point import Point 
 
 class BeachNode:
     def __init__(self, site=None, is_leaf=False):

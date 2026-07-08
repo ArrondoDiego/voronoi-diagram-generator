@@ -8,9 +8,6 @@ from voronoi_lib.clipping import clip_polygon
 from collections import defaultdict
 from voronoi_lib.utils import extract_cells
 
-
-
-
 class VoronoiGUI:
     def __init__(self):
         self.points = []
@@ -112,7 +109,6 @@ class VoronoiGUI:
 def main():
     gui = VoronoiGUI()
     plt.show()
-
 
 if __name__ == "__main__":
     main()
