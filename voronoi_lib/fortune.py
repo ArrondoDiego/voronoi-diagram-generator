@@ -271,38 +271,29 @@ class FortuneVoronoi:
             box_vertices.append(v)
 
         for he in self.dcel.half_edges:
+            # 1. Se l'arco ha già sia l'origine che la fine, lo saltiamo
             if he.origin is not None and he.twin.origin is not None:
                 continue
 
-            dx = he.twin.site.x - he.site.x
-            dy = he.twin.site.y - he.site.y
-            nx = -dy
-            ny = dx
-            length = math.sqrt(nx * nx + ny * ny)
+            # 2. Direzione topologica deterministica basata sulla tua DCEL
+            fx = he.twin.site.y - he.site.y
+            fy = he.site.x - he.twin.site.x
+            
+            length = math.sqrt(fx * fx + fy * fy)
             if length > 0:
-                nx /= length
-                ny /= length
-            dir_pt = Point(nx, ny)
+                fx /= length
+                fy /= length
 
+            # 3. Risoluzione dei raggi infiniti
             if he.origin is None and he.twin.origin is not None:
                 known = he.twin.origin.point
-                test_pt = Point(known.x - nx * 10000, known.y - ny * 10000)
-                dist_test = (test_pt.x - he.site.x) ** 2 + (test_pt.y - he.site.y) ** 2
-                dist_known = (known.x - he.site.x) ** 2 + (known.y - he.site.y) ** 2
-                if dist_test < dist_known:
-                    nx, ny = -nx, -ny
-                isec = self._ray_box_intersection(known, Point(nx, ny), box_corners)
+                isec = self._ray_box_intersection(known, Point(-fx, -fy), box_corners)
                 if isec:
                     he.origin = self.dcel.create_vertex(isec)
 
             elif he.twin.origin is None and he.origin is not None:
                 known = he.origin.point
-                test_pt = Point(known.x + nx * 10000, known.y + ny * 10000)
-                dist_test = (test_pt.x - he.site.x) ** 2 + (test_pt.y - he.site.y) ** 2
-                dist_known = (known.x - he.site.x) ** 2 + (known.y - he.site.y) ** 2
-                if dist_test < dist_known:
-                    nx, ny = -nx, -ny
-                isec = self._ray_box_intersection(known, Point(nx, ny), box_corners)
+                isec = self._ray_box_intersection(known, Point(fx, fy), box_corners)
                 if isec:
                     he.twin.origin = self.dcel.create_vertex(isec)
 
@@ -310,13 +301,13 @@ class FortuneVoronoi:
                 mx = (he.site.x + he.twin.site.x) / 2
                 my = (he.site.y + he.twin.site.y) / 2
                 mid = Point(mx, my)
-                half_edge_dir = Point(nx, ny)
-                isec1 = self._ray_box_intersection(mid, half_edge_dir, box_corners)
-                isec2 = self._ray_box_intersection(mid, Point(-nx, -ny), box_corners)
-                if isec1 and isec2:
-                    he.origin = self.dcel.create_vertex(isec1)
-                    he.twin.origin = self.dcel.create_vertex(isec2)
-
+                
+                isec_fwd = self._ray_box_intersection(mid, Point(fx, fy), box_corners)
+                isec_bwd = self._ray_box_intersection(mid, Point(-fx, -fy), box_corners)
+                
+                if isec_fwd and isec_bwd:
+                    he.origin = self.dcel.create_vertex(isec_bwd)
+                    he.twin.origin = self.dcel.create_vertex(isec_fwd)
     def _build_faces(self):
         visited = set()
         for he in self.dcel.half_edges:
