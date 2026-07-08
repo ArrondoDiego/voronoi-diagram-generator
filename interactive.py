@@ -8,6 +8,7 @@ from voronoi_lib.clipping import clip_polygon
 from collections import defaultdict
 from voronoi_lib.utils import extract_cells
 
+
 class VoronoiGUI:
     def __init__(self):
         self.points = []
@@ -78,20 +79,11 @@ class VoronoiGUI:
         self.computed = True
         self.fig.canvas.draw()
 
-        # Define the infinite domain
-        universe_box = [
-            Point(-10000, -10000), Point(10000, -10000), 
-            Point(10000, 10000), Point(-10000, 10000)
-        ]
-
-        # Mathematical execution without dummy data
         v = FortuneVoronoi(self.points)
-        edges = v.compute()
-        
-        # Extraction passing real sites for vectorial self-verification
-        cells = extract_cells(edges, universe_box, self.points)
+        dcel = v.compute()
 
-        # Rendering and Clipping for the screen (0-100)
+        cells = extract_cells(dcel, self.points)
+
         for i, (site, vertices) in enumerate(cells.items()):
             clipped_vertices = clip_polygon(vertices, self.box)
             if not clipped_vertices:
@@ -106,9 +98,11 @@ class VoronoiGUI:
         self.ax.set_title("Voronoi Diagram", fontsize=14, fontweight='bold')
         self.fig.canvas.draw()
 
+
 def main():
     gui = VoronoiGUI()
     plt.show()
+
 
 if __name__ == "__main__":
     main()

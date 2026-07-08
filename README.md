@@ -2,9 +2,12 @@
 
 A pure Python implementation of **Fortune's algorithm** (sweep-line) for computing Voronoi diagrams in O(n log n).
 
+The output is a full **DCEL** (Doubly-Connected Edge List) with **Vertex**, **HalfEdge**, and **Face** records,
+faithfully following the algorithm description in `docs/algorithm.md` (de Berg et al., "Computational Geometry").
+
 ## Dependencies
 
-- Python 3.12+
+- Python 3.10+
 - `matplotlib` (only for visualization/GUI)
 
 ```bash
@@ -20,3 +23,7 @@ python main.py
 # Interactive — click to place seeds, then press "Compute Voronoi"
 python interactive.py
 ```
+
+## Algorithm reference
+
+See `docs/algorithm.md` for the pseudocode and `docs/fortune_algorithm_explained.md` for the detailed explanation.

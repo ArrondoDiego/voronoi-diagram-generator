@@ -21,28 +21,27 @@ def main():
                     x, y = map(int, input(f"  {i+1}: ").split())
                     if 0 <= x <= 100 and 0 <= y <= 100:
                         points.append(Point(x, y))
-                        break 
+                        break
                     else:
                         print(" Coordinates must be between -100 and 100")
                 except ValueError:
                     print(" Invalid, use: x y")
-    else:  # choice r
+    else:
         for _ in range(5):
             points.append(Point(random.randint(0, 100), random.randint(0, 100)))
         for i, p in enumerate(points, 1):
             print(f"  Point {i}: ({p.x}, {p.y})")
 
-    # 1. Define the two domains
-    universe_box = [Point(-10000, -10000), Point(10000, -10000), Point(10000, 10000), Point(-10000, 10000)]
     display_box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
-    
-    # 2. Computation
+
+    # 2. Computation — returns DCEL (steps 1–8)
     v = FortuneVoronoi(points)
-    edges = v.compute()
-    
-    # 3. Infinite-closed extraction
-    cells = extract_cells(edges, universe_box, points)    
-    # 4. Exact geometric clipping for the screen
+    dcel = v.compute()
+
+    # 3. Extract cells from DCEL
+    cells = extract_cells(dcel, points)
+
+    # 4. Clip for display
     clipped_cells = {}
     for site, vertices in cells.items():
         clipped_vertices = clip_polygon(vertices, display_box)
@@ -50,6 +49,12 @@ def main():
             clipped_cells[site] = clipped_vertices
 
     save_image(points, clipped_cells, display_box, "voronoi_output.png")
+
+    if DEBUG:
+        print(f"\nDCEL: {len(dcel.vertices)} vertices, "
+              f"{len(dcel.half_edges)} half-edges, "
+              f"{len(dcel.faces)} faces")
+
 
 if __name__ == "__main__":
     main()

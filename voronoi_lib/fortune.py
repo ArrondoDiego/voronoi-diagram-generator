@@ -2,15 +2,15 @@ import math
 from voronoi_lib.point import Point, circumcenter
 from voronoi_lib.event import Event, SiteEvent, CircleEvent, EventQueue
 
-from voronoi_lib.edge import VoronoiEdge
+from voronoi_lib.edge import DCEL
 from voronoi_lib.beachline import BeachNode, BeachLine
+
 
 class FortuneVoronoi:
     def __init__(self, points):
         self.points = sorted(points, key=lambda p: (-p.y, p.x))
 
-        self.edges = []
-        self.vertices = []
+        self.dcel = DCEL()
 
         self._beach = BeachLine()
         self._queue = EventQueue()
@@ -30,15 +30,9 @@ class FortuneVoronoi:
             else:
                 self._handle_circle(event)
 
-        self._finish_edges()
-        return self.edges
-
-    def print_summary(self):
-        print(f"Edges: {len(self.edges)}, Vertices: {len(self.vertices)}")
-        for i, e in enumerate(self.edges):
-            print(f"  Edge {i+1}: {e}")
-        for i, v in enumerate(self.vertices):
-            print(f"  Vertex {i+1}: {v}")
+        self._attach_to_bounding_box()
+        self._build_faces()
+        return self.dcel
 
     def _handle_site(self, event):
         p = event.point
@@ -47,7 +41,6 @@ class FortuneVoronoi:
             self._beach.set_root(BeachNode(p, is_leaf=True))
             return
 
-        # Binary search on the tree
         arc = self._beach.find_arc_above(p, p.y)
 
         if arc.event is not None:
@@ -57,12 +50,10 @@ class FortuneVoronoi:
         start_y = self._beach.parabola_x(arc.site, p.y, p.x)
         start_point = Point(p.x, start_y)
 
-        # 1. Create the new leaves (arcs)
         left_leaf = BeachNode(arc.site, is_leaf=True)
         mid_leaf = BeachNode(p, is_leaf=True)
         right_leaf = BeachNode(arc.site, is_leaf=True)
 
-        # Keep horizontal pointers only on leaves for O(1) circle events
         left_leaf.prev = arc.prev
         if arc.prev:
             arc.prev.next = left_leaf
@@ -76,7 +67,6 @@ class FortuneVoronoi:
         if arc.next:
             arc.next.prev = right_leaf
 
-        # 2. Create the internal nodes (the two new associated breakpoints)
         bp_left = BeachNode(is_leaf=False)
         bp_left.left_site = arc.site
         bp_left.right_site = p
@@ -85,7 +75,6 @@ class FortuneVoronoi:
         bp_right.left_site = p
         bp_right.right_site = arc.site
 
-        # 3. Assemble the local subtree
         bp_left.left = left_leaf
         left_leaf.parent = bp_left
 
@@ -98,7 +87,6 @@ class FortuneVoronoi:
         bp_right.right = right_leaf
         right_leaf.parent = bp_right
 
-        # 4. Replace the old leaf 'arc' with the new subtree in the main tree
         bp_left.parent = arc.parent
         if arc.parent is None:
             self._beach.set_root(bp_left)
@@ -108,19 +96,18 @@ class FortuneVoronoi:
             else:
                 arc.parent.right = bp_left
 
-        # NEW: Restore AVL invariants
         self._beach.rebalance(bp_left)
 
-        # 5. Generate geometric segments
-        edge1 = VoronoiEdge(start_point, arc.site, p)
-        edge2 = VoronoiEdge(start_point, p, arc.site)
-        self.edges.append(edge1)
-        self.edges.append(edge2)
+        # Create twin half-edges (Step 4 of HANDLESITEEVENT)
+        he_left, he_right = self.dcel.create_twin_pair(
+            site_a=arc.site, site_b=p
+        )
+        he_left.start_geom = start_point
+        he_right.start_geom = start_point
 
-        bp_left.edge = edge1
-        bp_right.edge = edge2
+        bp_left.edge = he_left
+        bp_right.edge = he_right
 
-        # Check potential Circle Events using the horizontal leaf chain
         if left_leaf.prev is not None:
             self._check_circle_event(left_leaf.prev, left_leaf, mid_leaf, p.y)
 
@@ -142,38 +129,48 @@ class FortuneVoronoi:
             right_arc.event.valid = False
             right_arc.event = None
 
-        vertex = event.center
-        self.vertices.append(vertex)
+        # Step 2 of HANDLECIRCLEEVENT: add vertex record
+        vertex = self.dcel.create_vertex(event.center)
 
         p = arc.parent
-        
-        # Find the other breakpoint in the tree that collapses into this same vertex
+
         highest_changed_ancestor = None
         curr = p
-        
-        # p is the direct parent of leaf 'arc'
+
         if p.left == arc:
-            # p is the arc's right breakpoint. Find the in-order predecessor (left breakpoint).
             while curr.parent is not None and curr.parent.left == curr:
                 curr = curr.parent
             highest_changed_ancestor = curr.parent
         else:
-            # p is the arc's left breakpoint. Find the in-order successor (right breakpoint).
             while curr.parent is not None and curr.parent.right == curr:
                 curr = curr.parent
             highest_changed_ancestor = curr.parent
 
-        # Close old edges at the computed vertex
-        if p.edge is not None:
-            p.edge.end = vertex
-        if highest_changed_ancestor and highest_changed_ancestor.edge is not None:
-            highest_changed_ancestor.edge.end = vertex
+        # Identify the two converging half-edges
+        he_p = p.edge
+        he_hca = highest_changed_ancestor.edge if highest_changed_ancestor else None
 
-        # Detach the leaf from the horizontal list
+        # Determine which half-edge belongs to which face
+        he_left_face = None
+        he_arc_face = None
+
+        for he in (he_p, he_hca):
+            if he is None:
+                continue
+            if he.site == left_arc.site:
+                he_left_face = he
+            elif he.site == arc.site:
+                he_arc_face = he
+
+        # Close old half-edges at the vertex (their END is at vertex)
+        if he_left_face is not None:
+            he_left_face.twin.origin = vertex
+        if he_arc_face is not None:
+            he_arc_face.twin.origin = vertex
+
         left_arc.next = right_arc
         right_arc.prev = left_arc
 
-        # Remove leaf 'arc' from the binary tree: sibling takes parent's place
         gp = p.parent
         sib = p.right if p.left == arc else p.left
         sib.parent = gp
@@ -186,22 +183,33 @@ class FortuneVoronoi:
             else:
                 gp.right = sib
 
-        # NEW: Restore AVL invariants starting from grandparent
-        self._beach.rebalance(gp)   
+        self._beach.rebalance(gp)
 
-        # Create the new edge starting from the newly discovered vertex
-        new_edge = VoronoiEdge(vertex, left_arc.site, right_arc.site)
-        self.edges.append(new_edge)
+        # Create new twin half-edges for the new breakpoint (Step 2)
+        he_new_left, he_new_right = self.dcel.create_twin_pair(
+            site_a=left_arc.site, site_b=right_arc.site
+        )
+        he_new_left.origin = vertex
 
-        # Update the surviving breakpoint with the new adjacent site pair
         if highest_changed_ancestor:
             if highest_changed_ancestor.left_site == arc.site:
                 highest_changed_ancestor.left_site = left_arc.site
             elif highest_changed_ancestor.right_site == arc.site:
                 highest_changed_ancestor.right_site = right_arc.site
-            highest_changed_ancestor.edge = new_edge
+            highest_changed_ancestor.edge = he_new_left
 
-        # Check new adjacent triplets for future circle events
+        # Set next/prev pointers at the vertex
+        if he_left_face is not None:
+            he_left_face.next = he_new_left
+            he_new_left.prev = he_left_face
+        if he_arc_face is not None and he_left_face is not None:
+            he_arc_face.next = he_left_face.twin
+            he_left_face.twin.prev = he_arc_face
+        if he_arc_face is not None:
+            he_new_right.next = he_arc_face.twin
+            he_arc_face.twin.prev = he_new_right
+
+        # Check new triples
         if left_arc.prev is not None:
             self._check_circle_event(left_arc.prev, left_arc, right_arc, event.point.y)
         if right_arc.next is not None:
@@ -240,34 +248,129 @@ class FortuneVoronoi:
         mid.event = event
         self._queue.push(event)
 
-    def _finish_edges(self):
-        for edge in self.edges:
-            if edge.start is not None and edge.end is not None:
+    def _attach_to_bounding_box(self):
+        if self.dcel.vertices:
+            xs = [v.point.x for v in self.dcel.vertices]
+            ys = [v.point.y for v in self.dcel.vertices]
+        else:
+            xs = [pt.x for pt in self.points]
+            ys = [pt.y for pt in self.points]
+        margin = 1000
+        min_x = min(xs) - margin
+        max_x = max(xs) + margin
+        min_y = min(ys) - margin
+        max_y = max(ys) + margin
+
+        box_corners = [
+            Point(min_x, min_y), Point(max_x, min_y),
+            Point(max_x, max_y), Point(min_x, max_y),
+        ]
+        box_vertices = []
+        for pt in box_corners:
+            v = self.dcel.create_vertex(pt)
+            box_vertices.append(v)
+
+        for he in self.dcel.half_edges:
+            if he.origin is not None and he.twin.origin is not None:
                 continue
 
-            dx = edge.right.x - edge.left.x
-            dy = edge.right.y - edge.left.y
-            
+            dx = he.twin.site.x - he.site.x
+            dy = he.twin.site.y - he.site.y
             nx = -dy
             ny = dx
-            
             length = math.sqrt(nx * nx + ny * ny)
             if length > 0:
                 nx /= length
                 ny /= length
+            dir_pt = Point(nx, ny)
 
-            if edge.start is None and edge.end is None:
-                mx = (edge.left.x + edge.right.x) / 2
-                my = (edge.left.y + edge.right.y) / 2
-                edge.start = Point(mx, my)
-                # The ray propagates in the opposite direction
-                edge.direction = Point(-nx, -ny)
-            elif edge.end is None:
-                # It's a ray starting from start going to infinity (outward)
-                edge.direction = Point(-nx, -ny)
-            elif edge.start is None:
-                # If it converged toward end but has no start, make it start 
-                # from end by inverting its natural direction
-                edge.start = edge.end
-                edge.end = None
-                edge.direction = Point(nx, ny)
+            if he.origin is None and he.twin.origin is not None:
+                known = he.twin.origin.point
+                test_pt = Point(known.x - nx * 10000, known.y - ny * 10000)
+                dist_test = (test_pt.x - he.site.x) ** 2 + (test_pt.y - he.site.y) ** 2
+                dist_known = (known.x - he.site.x) ** 2 + (known.y - he.site.y) ** 2
+                if dist_test < dist_known:
+                    nx, ny = -nx, -ny
+                isec = self._ray_box_intersection(known, Point(nx, ny), box_corners)
+                if isec:
+                    he.origin = self.dcel.create_vertex(isec)
+
+            elif he.twin.origin is None and he.origin is not None:
+                known = he.origin.point
+                test_pt = Point(known.x + nx * 10000, known.y + ny * 10000)
+                dist_test = (test_pt.x - he.site.x) ** 2 + (test_pt.y - he.site.y) ** 2
+                dist_known = (known.x - he.site.x) ** 2 + (known.y - he.site.y) ** 2
+                if dist_test < dist_known:
+                    nx, ny = -nx, -ny
+                isec = self._ray_box_intersection(known, Point(nx, ny), box_corners)
+                if isec:
+                    he.twin.origin = self.dcel.create_vertex(isec)
+
+            elif he.origin is None and he.twin.origin is None:
+                mx = (he.site.x + he.twin.site.x) / 2
+                my = (he.site.y + he.twin.site.y) / 2
+                mid = Point(mx, my)
+                half_edge_dir = Point(nx, ny)
+                isec1 = self._ray_box_intersection(mid, half_edge_dir, box_corners)
+                isec2 = self._ray_box_intersection(mid, Point(-nx, -ny), box_corners)
+                if isec1 and isec2:
+                    he.origin = self.dcel.create_vertex(isec1)
+                    he.twin.origin = self.dcel.create_vertex(isec2)
+
+    def _build_faces(self):
+        visited = set()
+        for he in self.dcel.half_edges:
+            if he.face is not None or he.origin is None or he in visited:
+                continue
+            face_site = he.site
+            if face_site is None:
+                continue
+
+            face = None
+            for f in self.dcel.faces:
+                if f.site == face_site:
+                    face = f
+                    break
+            if face is None:
+                face = self.dcel.create_face(face_site)
+
+            curr = he
+            while curr is not None and curr.face is None and curr not in visited:
+                visited.add(curr)
+                curr.face = face
+                if face.outer_component is None:
+                    face.outer_component = curr
+                curr = curr.next
+
+    def _ray_box_intersection(self, start, direction, box):
+        min_x = min(p.x for p in box)
+        max_x = max(p.x for p in box)
+        min_y = min(p.y for p in box)
+        max_y = max(p.y for p in box)
+
+        t_min = float('inf')
+        pt = None
+
+        if abs(direction.x) > 1e-9:
+            t1 = (min_x - start.x) / direction.x
+            if t1 > 1e-9 and t1 < t_min:
+                t_min = t1
+                pt = Point(min_x, start.y + t1 * direction.y)
+
+            t2 = (max_x - start.x) / direction.x
+            if t2 > 1e-9 and t2 < t_min:
+                t_min = t2
+                pt = Point(max_x, start.y + t2 * direction.y)
+
+        if abs(direction.y) > 1e-9:
+            t3 = (min_y - start.y) / direction.y
+            if t3 > 1e-9 and t3 < t_min:
+                t_min = t3
+                pt = Point(start.x + t3 * direction.x, min_y)
+
+            t4 = (max_y - start.y) / direction.y
+            if t4 > 1e-9 and t4 < t_min:
+                t_min = t4
+                pt = Point(start.x + t4 * direction.x, max_y)
+
+        return pt
