@@ -9,8 +9,8 @@ faithfully following the pseudocode in `docs/algorithm.md`.
 ## Project structure
 
 ```
-voronoi_lib/              # Core library
-├── __init__.py           # Package exports
+voronoi_lib/              # Core library (Fortune's algorithm)
+├── __init__.py           # Package exports: FortuneVoronoi, Point
 ├── point.py              # Point class + circumcenter (Cramer's rule)
 ├── event.py              # SiteEvent, CircleEvent, EventQueue (heap)
 ├── edge.py               # DCEL: Vertex, HalfEdge, Face
@@ -20,11 +20,11 @@ voronoi_lib/              # Core library
 ├── clipping.py           # Sutherland–Hodgman polygon clipping
 └── visualization.py      # matplotlib rendering (save_image)
 
-main.py                   # Interactive GUI (click to add points, compute)
+main.py                   # Interactive GUI (click to add, compute Voronoi)
 docs/
 ├── algorithm.md          # Pseudocode reference (de Berg et al.)
-├── mapping.md            # Pseudocode line → code line mapping
-└── speech.md             # ~10 min presentation outline
+├── theory.pdf            # Supporting theory slides
+└── presentation.pdf      # Exam presentation slides
 ```
 
 ## Dependencies
