@@ -1,4 +1,4 @@
-# Voronoi Diagram Generator — Fortune's Algorithm
+# Voronoi Diagram generator — Fortune's algorithm
 
 A pure Python implementation of **Fortune's sweepline algorithm** (de Berg et al., *Computational Geometry*, Chapter 7)
 for computing Voronoi diagrams in **O(n log n)** time.
