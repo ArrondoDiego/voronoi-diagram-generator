@@ -3,10 +3,9 @@ from voronoi_lib.point import Point
 
 def extract_cells(dcel, all_sites):
     # collects the vertex sequence for each site's Voronoi cell from the DCEL.
-    # - Gathers all endpoints of half-edges belonging to the site.
-    # - Adds bounding-box corners whose nearest site is this one (so cells
-    #   that extend to the box perimeter form closed polygons).
-    # - Sorts vertices angularly around the site to produce a correct winding order.
+    # - gathers all endpoints of half-edges belonging to the site.
+    # - adds bounding-box corners whose nearest site is this one (so cells that extend to the box perimeter form closed polygons).
+    # - sorts vertices angularly around the site to produce a correct winding order.
     cells = {}
     
     if all_sites:

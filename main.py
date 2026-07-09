@@ -1,54 +1,105 @@
-import math
 import random
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 from voronoi_lib.point import Point
 from voronoi_lib.fortune import FortuneVoronoi
 from voronoi_lib.clipping import clip_polygon
-from voronoi_lib.visualization import save_image
 from voronoi_lib.utils import extract_cells
 
-DEBUG = True
+
+class VoronoiGUI:
+    def __init__(self):
+        self.points = []
+        self.computed = False
+        self.box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
+        self.colors = ['#f4f1de', '#e07a5f', '#3d5a80', '#98c1d9', '#ee6c4d', '#293241', '#81b29a']
+
+        self.fig, self.ax = plt.subplots(figsize=(8, 8))
+        plt.subplots_adjust(bottom=0.20)
+
+        self._setup_axes()
+
+        ax_reset = plt.axes([0.15, 0.05, 0.2, 0.075])
+        self.btn_reset = Button(ax_reset, 'Reset')
+
+        ax_random = plt.axes([0.40, 0.05, 0.2, 0.075])
+        self.btn_random = Button(ax_random, '+5 Random Points')
+
+        ax_compute = plt.axes([0.65, 0.05, 0.2, 0.075])
+        self.btn_compute = Button(ax_compute, 'Compute Voronoi')
+
+        self.fig.canvas.mpl_connect('button_press_event', self.on_canvas_click)
+        self.btn_compute.on_clicked(self.on_compute_click)
+        self.btn_reset.on_clicked(self.on_reset_click)
+        self.btn_random.on_clicked(self.on_random_click)
+
+    def _setup_axes(self):
+        self.ax.set_title("Voronoi diagram generator", fontsize=12)
+        self.ax.set_xlim(0, 100)
+        self.ax.set_ylim(0, 100)
+        self.ax.set_aspect('equal')
+        self.ax.grid(True, linestyle='--', alpha=0.5)
+
+    def on_canvas_click(self, event):
+        if self.computed or event.inaxes != self.ax:
+            return
+
+        x, y = event.xdata, event.ydata
+        if x is not None and y is not None:
+            self.points.append(Point(x, y))
+            self.ax.scatter([x], [y], color='#d90429', zorder=5, s=40)
+            self.fig.canvas.draw()
+
+    def on_random_click(self, event):
+        if self.computed:
+            return
+
+        for _ in range(5):
+            x, y = random.uniform(10, 90), random.uniform(10, 90)
+            self.points.append(Point(x, y))
+            self.ax.scatter([x], [y], color='#d90429', zorder=5, s=40)
+
+        self.fig.canvas.draw()
+
+    def on_reset_click(self, event):
+        self.points = []
+        self.computed = False
+
+        self.ax.clear()
+        self._setup_axes()
+        self.fig.canvas.draw()
+
+    def on_compute_click(self, event):
+        if self.computed or len(self.points) < 2:
+            print("Insert at least 2 points")
+            return
+
+        self.computed = True
+        self.fig.canvas.draw()
+
+        v = FortuneVoronoi(self.points)
+        dcel = v.compute()
+
+        cells = extract_cells(dcel, self.points)
+
+        for i, (site, vertices) in enumerate(cells.items()):
+            clipped_vertices = clip_polygon(vertices, self.box)
+            if not clipped_vertices:
+                continue
+
+            xs = [pt.x for pt in clipped_vertices]
+            ys = [pt.y for pt in clipped_vertices]
+
+            color = self.colors[i % len(self.colors)]
+            self.ax.fill(xs, ys, color=color, alpha=0.6, edgecolor='#2b2d42', linewidth=1.5)
+
+        self.ax.set_title("Voronoi Diagram", fontsize=14, fontweight='bold')
+        self.fig.canvas.draw()
+
 
 def main():
-    choice = input("Use [r]andom or [c]ustom points?: ").strip().lower()
-    points = []
-
-    if choice == "c":
-        print("Enter 5 points (x y) between 0 and 100:")
-        for i in range(5):
-            while True:
-                try:
-                    x, y = map(int, input(f"  {i+1}: ").split())
-                    if 0 <= x <= 100 and 0 <= y <= 100:
-                        points.append(Point(x, y))
-                        break
-                    else:
-                        print(" Coordinates must be between -100 and 100")
-                except ValueError:
-                    print(" Invalid, use: x y")
-    else:
-        for _ in range(5):
-            points.append(Point(random.randint(0, 100), random.randint(0, 100)))
-        for i, p in enumerate(points, 1):
-            print(f"  Point {i}: ({p.x}, {p.y})")
-
-    display_box = [Point(0, 0), Point(100, 0), Point(100, 100), Point(0, 100)]
-
-    v = FortuneVoronoi(points)
-    dcel = v.compute()
-
-    cells = extract_cells(dcel, points)
-    clipped_cells = {}
-    for site, vertices in cells.items():
-        clipped_vertices = clip_polygon(vertices, display_box)
-        if clipped_vertices:
-            clipped_cells[site] = clipped_vertices
-
-    save_image(points, clipped_cells, display_box, "voronoi_output.png")
-
-    if DEBUG:
-        print(f"\nDCEL: {len(dcel.vertices)} vertices, "
-              f"{len(dcel.half_edges)} half-edges, "
-              f"{len(dcel.faces)} faces")
+    gui = VoronoiGUI()
+    plt.show()
 
 
 if __name__ == "__main__":
