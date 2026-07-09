@@ -1,3 +1,9 @@
+"""Interactive Voronoi diagram GUI using matplotlib.
+
+Allows the user to place site points by clicking, generate random
+points, and compute the Voronoi diagram with a button press.
+"""
+
 import random
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
@@ -8,6 +14,15 @@ from voronoi_lib.utils import extract_cells
 
 
 class VoronoiGUI:
+    """Interactive application for generating and viewing Voronoi diagrams.
+
+    Provides a matplotlib window with:
+      - Click-to-add site points on the canvas.
+      - '+5 Random Points' button for random site placement.
+      - 'Compute Voronoi' button to run the algorithm and display cells.
+      - 'Reset' button to clear everything.
+    """
+
     def __init__(self):
         self.points = []
         self.computed = False
@@ -34,6 +49,7 @@ class VoronoiGUI:
         self.btn_random.on_clicked(self.on_random_click)
 
     def _setup_axes(self):
+        """Configure the plot area with fixed limits and grid."""
         self.ax.set_title("Voronoi diagram generator", fontsize=12)
         self.ax.set_xlim(0, 100)
         self.ax.set_ylim(0, 100)
@@ -41,6 +57,7 @@ class VoronoiGUI:
         self.ax.grid(True, linestyle='--', alpha=0.5)
 
     def on_canvas_click(self, event):
+        """Add a site point where the user clicks (if not already computed)."""
         if self.computed or event.inaxes != self.ax:
             return
 
@@ -51,6 +68,7 @@ class VoronoiGUI:
             self.fig.canvas.draw()
 
     def on_random_click(self, event):
+        """Add five random points within the display area."""
         if self.computed:
             return
 
@@ -62,6 +80,7 @@ class VoronoiGUI:
         self.fig.canvas.draw()
 
     def on_reset_click(self, event):
+        """Clear all points and reset to the initial state."""
         self.points = []
         self.computed = False
 
@@ -70,6 +89,7 @@ class VoronoiGUI:
         self.fig.canvas.draw()
 
     def on_compute_click(self, event):
+        """Run Fortune's algorithm and display the Voronoi cells."""
         if self.computed or len(self.points) < 2:
             print("Insert at least 2 points")
             return

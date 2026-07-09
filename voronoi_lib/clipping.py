@@ -1,10 +1,43 @@
+"""Sutherland-Hodgman polygon clipping algorithm.
+
+Clips a subject polygon against a convex clip polygon.
+Used to trim Voronoi cells to a rectangular display area.
+"""
+
 from voronoi_lib.point import Point
 
+
 def clip_polygon(subject_polygon, clip_box):
+    """Clip a convex polygon against an axis-aligned clip rectangle.
+
+    Implements the Sutherland-Hodgman algorithm: for each edge of
+    the clip box, the subject polygon is tested against the half-plane
+    defined by that edge.  Vertices outside are removed and new
+    intersection vertices are inserted at the boundary.
+
+    Args:
+        subject_polygon: List of Points in CCW order (the Voronoi cell).
+        clip_box: List of four Points (CCW) defining the clip rectangle.
+
+    Returns:
+        List of Points representing the clipped polygon, or an empty
+        list if the polygon is entirely outside the clip box.
+    """
+
     def inside(p, cp1, cp2):
+        """Test whether point p is on the 'inside' side of edge (cp1, cp2).
+
+        Uses the cross product sign: non-negative means the point is
+        to the left of the directed edge (CCW clip box).
+        """
         return (cp2.x - cp1.x) * (p.y - cp1.y) - (cp2.y - cp1.y) * (p.x - cp1.x) >= 0
 
     def compute_intersection(p1, p2, cp1, cp2):
+        """Compute the intersection of line segments (p1,p2) and (cp1,cp2).
+
+        Uses the line-intersection formula derived from the cross
+        product of the endpoints.  Returns None for parallel lines.
+        """
         dc_x = cp1.x - cp2.x
         dc_y = cp1.y - cp2.y
         dp_x = p1.x - p2.x

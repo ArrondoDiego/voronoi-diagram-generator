@@ -1,6 +1,17 @@
+"""Matplotlib-based visualization for the Voronoi diagram."""
+
 import matplotlib.pyplot as plt
 
+
 def save_image(points, cells, clip_box, filename="voronoi.png"):
+    """Render the Voronoi diagram and save it as a PNG image.
+
+    Args:
+        points: List of site Points (shown as red markers).
+        cells: Dict mapping site -> list of Points (the clipped cell polygon).
+        clip_box: List of four Points defining the display boundary.
+        filename: Output path for the PNG image.
+    """
     fig, ax = plt.subplots(figsize=(8, 8))
 
     min_x = min(p.x for p in clip_box)

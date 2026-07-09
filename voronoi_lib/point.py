@@ -1,6 +1,15 @@
+"""Point geometry primitives for the Voronoi diagram computation."""
+
 import math
 
+
 class Point:
+    """A 2D point with floating-point coordinates.
+
+    Provides equality with epsilon tolerance and hash based on
+    rounded coordinates for use as dictionary keys and set members.
+    """
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -18,8 +27,13 @@ class Point:
 
 
 def circumcenter(a, b, c):
-    # solves the linear system for the circumcenter of three points using
-    # cramer's rule,  returns None when the points are collinear (denom ≈ 0).
+    """Compute the circumcenter of three points using Cramer's rule.
+
+    The circumcenter is the intersection of the perpendicular bisectors
+    of the sides of triangle (a, b, c).  Returns None when the three
+    points are collinear (denominator ≈ 0), which means no finite
+    circumcenter exists.
+    """
     A1 = 2 * (b.x - a.x)
     B1 = 2 * (b.y - a.y)
     C1 = b.x**2 + b.y**2 - a.x**2 - a.y**2

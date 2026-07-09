@@ -1,13 +1,26 @@
+"""Utility functions for extracting Voronoi cells from the DCEL."""
+
 import math
 from voronoi_lib.point import Point
 
+
 def extract_cells(dcel, all_sites):
-    # collects the vertex sequence for each site's Voronoi cell from the DCEL.
-    # - gathers all endpoints of half-edges belonging to the site.
-    # - adds bounding-box corners whose nearest site is this one (so cells that extend to the box perimeter form closed polygons).
-    # - sorts vertices angularly around the site to produce a correct winding order.
+    """Extract polygon vertices for each site's Voronoi cell from the DCEL.
+
+    For each site:
+      1. Collects all endpoints of half-edges that belong to that site.
+      2. Adds bounding-box corners whose nearest site is this one.
+      3. Sorts vertices angularly around the site (atan2) to produce a
+         correct counter-clockwise winding order.
+      4. Closes the polygon by appending the first vertex at the end.
+
+    Returns a dict mapping site -> list of Points (the cell polygon).
+    Cells with fewer than 3 unique vertices are omitted.
+    """
     cells = {}
-    
+
+    # Build the same bounding box used in _attach_to_bounding_box so
+    # that cells extending to infinity are closed at the box perimeter.
     if all_sites:
         xs = [pt.x for pt in all_sites] + [v.point.x for v in dcel.vertices]
         ys = [pt.y for pt in all_sites] + [v.point.y for v in dcel.vertices]
@@ -16,7 +29,7 @@ def extract_cells(dcel, all_sites):
         max_x = max(xs) + margin
         min_y = min(ys) - margin
         max_y = max(ys) + margin
-        
+
         box_corners = [
             Point(min_x, min_y), Point(max_x, min_y),
             Point(max_x, max_y), Point(min_x, max_y)
@@ -27,24 +40,26 @@ def extract_cells(dcel, all_sites):
     for site in all_sites:
         verts = []
         seen = set()
-        
+
+        # Gather all distinct endpoints from half-edges of this site.
         for he in dcel.half_edges:
             if he.site != site or he.origin is None:
                 continue
-            
+
             pt1 = he.origin.point
             key1 = (round(pt1.x, 9), round(pt1.y, 9))
             if key1 not in seen:
                 seen.add(key1)
                 verts.append(pt1)
-                
+
             if he.twin and he.twin.origin:
                 pt2 = he.twin.origin.point
                 key2 = (round(pt2.x, 9), round(pt2.y, 9))
                 if key2 not in seen:
                     seen.add(key2)
                     verts.append(pt2)
-                    
+
+        # Add bounding-box corners whose nearest site is this one.
         for corner in box_corners:
             closest_site = min(all_sites, key=lambda s: (s.x - corner.x)**2 + (s.y - corner.y)**2)
             if closest_site == site:
@@ -56,6 +71,7 @@ def extract_cells(dcel, all_sites):
         if len(verts) < 3:
             continue
 
+        # Deduplicate vertices that are within epsilon of each other.
         unique = []
         for v in verts:
             if not any(math.hypot(v.x - u.x, v.y - u.y) < 1e-6 for u in unique):
@@ -64,6 +80,7 @@ def extract_cells(dcel, all_sites):
         if len(unique) < 3:
             continue
 
+        # Sort by polar angle around the site for a correct winding order.
         unique.sort(key=lambda v: math.atan2(v.y - site.y, v.x - site.x))
         unique.append(unique[0])
         cells[site] = unique

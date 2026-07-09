@@ -1,14 +1,36 @@
-# Voronoi Diagram Generator
+# Voronoi Diagram Generator — Fortune's Algorithm
 
-A pure Python implementation of **Fortune's algorithm** (sweep-line) for computing Voronoi diagrams in O(n log n).
+A pure Python implementation of **Fortune's sweepline algorithm** (de Berg et al., *Computational Geometry*, Chapter 7)
+for computing Voronoi diagrams in **O(n log n)** time.
 
-The output is a full **DCEL** (Doubly-Connected Edge List) with **Vertex**, **HalfEdge**, and **Face** records,
-faithfully following the algorithm description in `docs/algorithm.md` (de Berg et al., "Computational Geometry").
+The output is returned as a **DCEL** (Doubly-Connected Edge List) with `Vertex`, `HalfEdge`, and `Face` records,
+faithfully following the pseudocode in `docs/algorithm.md`.
+
+## Project structure
+
+```
+voronoi_lib/              # Core library
+├── __init__.py           # Package exports
+├── point.py              # Point class + circumcenter (Cramer's rule)
+├── event.py              # SiteEvent, CircleEvent, EventQueue (heap)
+├── edge.py               # DCEL: Vertex, HalfEdge, Face
+├── beachline.py          # Beach line status structure (AVL tree)
+├── fortune.py            # Main algorithm: FortuneVoronoi.compute()
+├── utils.py              # extract_cells — DCEL → cell polygons
+├── clipping.py           # Sutherland–Hodgman polygon clipping
+└── visualization.py      # matplotlib rendering (save_image)
+
+main.py                   # Interactive GUI (click to add points, compute)
+docs/
+├── algorithm.md          # Pseudocode reference (de Berg et al.)
+├── mapping.md            # Pseudocode line → code line mapping
+└── speech.md             # ~10 min presentation outline
+```
 
 ## Dependencies
 
 - Python 3.10+
-- `matplotlib` (only for visualization/GUI)
+- `matplotlib` (for the interactive GUI)
 
 ```bash
 pip install matplotlib
@@ -17,9 +39,6 @@ pip install matplotlib
 ## Usage
 
 ```bash
-# CLI — prompts for 5 points, saves voronoi_output.png
+# Interactive GUI — click to place sites, then press "Compute Voronoi"
 python main.py
-
-# Interactive — click to place seeds, then press "Compute Voronoi"
-python interactive.py
 ```
